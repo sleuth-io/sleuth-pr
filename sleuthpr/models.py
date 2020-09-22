@@ -8,12 +8,24 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 
 
+class Provider(TextChoices):
+    GITHUB = ("github", "GitHub")
+    GITLAB = ("gitlab", "GitLab")
+    BITBUCKET = ("bitbucket", "Bitbucket")
+
+
 class Installation(models.Model):
+
+    # remote identifier for this installation
     remote_id = models.CharField(max_length=512, db_index=True)
+
+    # remote type the installation is for, i.e. github org or github user
     target_type = models.CharField(max_length=50)
+
+    # remote identifier for the target
     target_id = models.CharField(max_length=255)
     on = models.DateTimeField(default=now, verbose_name=_("created on"), db_index=True)
-    provider = models.CharField(max_length=50)
+    provider = models.CharField(max_length=50, choices=Provider.choices)
 
 
 class Repository(models.Model):
@@ -48,11 +60,13 @@ class PullRequest(models.Model):
 
 
 class Rule(models.Model):
+    title = models.CharField(default="", max_length=255, verbose_name=_("title"), db_index=True)
     description = models.TextField(max_length=16384, blank=True, verbose_name=_("description"))
     on = models.DateTimeField(default=now, verbose_name=_("created on"), db_index=True)
     repository = models.ForeignKey(
         Repository, on_delete=CASCADE, related_name="rules", verbose_name=_("repository"),
     )
+    order = models.IntegerField()
 
 
 class TriggerType(TextChoices):
@@ -61,10 +75,11 @@ class TriggerType(TextChoices):
     CRON = ("cron", "Every 5 minutes")
 
 
-@dataclass
-class ActionType:
-    key: str
-    description: str
+class ActionType(TextChoices):
+
+    MERGE = ("pr_merge", "PR Merge")
+    CLOSE = ("pr_close", "PR Close")
+    ADD_LABEL = ("add_label", "Add Label")
 
     def execute(self, context: Dict):
         pass
@@ -90,6 +105,7 @@ class Trigger(models.Model):
         Rule, on_delete=CASCADE, related_name="pull_requests", verbose_name=_("installation"),
     )
     type = models.CharField(max_length=30, choices=TriggerType.choices)
+    order = models.IntegerField()
 
 
 class Condition(models.Model):
@@ -97,8 +113,9 @@ class Condition(models.Model):
     expression = models.TextField(max_length=16384, blank=True, verbose_name=_("expression"))
     on = models.DateTimeField(default=now, verbose_name=_("created on"), db_index=True)
     rule = models.ForeignKey(
-        Rule, on_delete=CASCADE, related_name="pull_requests", verbose_name=_("installation"),
+        Rule, on_delete=CASCADE, related_name="conditions", verbose_name=_("rule"),
     )
+    order = models.IntegerField()
 
 
 class Action(models.Model):
@@ -106,8 +123,10 @@ class Action(models.Model):
     description = models.TextField(max_length=16384, blank=True, verbose_name=_("description"))
     on = models.DateTimeField(default=now, verbose_name=_("created on"), db_index=True)
     parameters = models.JSONField()
-
-    priority = models.IntegerField()
+    rule = models.ForeignKey(
+        Rule, on_delete=CASCADE, related_name="actions", verbose_name=_("rule"),
+    )
+    order = models.IntegerField()
 
 
 def create_rule(repository: Repository, description: str, triggers: List[str], conditions: List[str], actions: List[str]):
