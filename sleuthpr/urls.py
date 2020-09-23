@@ -1,10 +1,10 @@
 from django.urls import path
 
 from . import views
+from .services import github
 
 urlpatterns = [
-    path('', views.index, name='index'),
-    path('install', views.install, name='install'),
-    path('event', views.event, name='event'),
-    path('welcome', views.welcome, name='welcome'),
+    path("", views.index, name="index"),
+    path("event", github.on_event, name="event"),
+    path("welcome", views.welcome, name="welcome"),
 ]

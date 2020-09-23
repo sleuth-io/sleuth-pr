@@ -12,6 +12,8 @@ def test_basic():
 rules:
   - ensure-lots-of-reviewers:
       description: "Ensure lots-of-reviewers is on big pull requests"
+      triggers:
+        - pr_updated
       conditions:
         - description: "Number of reviewers is more than 3"
           expression: "number_reviewers>3"
@@ -30,6 +32,10 @@ rules:
     assert "Ensure lots-of-reviewers is on big pull requests" == rule.description
     assert 1 == len(rule.conditions.all())
 
+    assert 1 == len(rule.triggers.all())
+    trigger = rule.triggers.first()
+    assert "pr_updated" == trigger.type
+
     condition = rule.conditions.all()[0]
     assert "Number of reviewers is more than 3" == condition.description
     assert "number_reviewers>3" == condition.expression
@@ -45,3 +51,21 @@ rules:
     assert "lots-of-reviewers2" == action.parameters.get("value")
 
 
+@pytest.mark.django_db
+def test_guess_triggers():
+
+    data = """
+rules:
+  - ensure-lots-of-reviewers:
+      description: "Ensure lots-of-reviewers is on big pull requests"
+      conditions:
+        - description: "Number of reviewers is more than 3"
+          expression: "number_reviewers>3"
+      actions:
+        - add_label: "lots-of-reviewers"
+"""
+    repository = RepositoryFactory()
+    rule = refresh(repository, data)[0]
+
+    assert 2 == len(rule.triggers.all())
+    assert {"pr_created", "pr_updated"} == set(t.type for t in rule.triggers.all())

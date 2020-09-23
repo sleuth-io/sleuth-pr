@@ -18,6 +18,6 @@ from django.urls import path, include
 import sleuthpr
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('sleuthpr/', include('sleuthpr.urls'))
+    path("admin/", admin.site.urls),
+    path("sleuthpr/", include("sleuthpr.urls")),
 ]

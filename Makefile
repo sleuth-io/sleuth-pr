@@ -1,4 +1,4 @@
-.PHONY: help rebuild-index lint format lint-py lint-js format-py format-js check-format-py
+.PHONY: help rebuild-index lint format lint-py lint-js format-py format-js check-format-py format
 
 # Help system from https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 .DEFAULT_GOAL := help
@@ -21,3 +21,7 @@ endif
 up: ## Start the application for development
 	bin/run-web-dev.sh
 
+
+format: ## Format Python code
+	black sleuthpr --target-version py38
+	reorder-python-imports --py38-plus `find sleuthpr -name "*.py"` || black sleuthpr --target-version py38

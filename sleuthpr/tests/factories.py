@@ -18,6 +18,4 @@ class RepositoryFactory(factory.django.DjangoModelFactory):
         model = models.Repository
 
     installation = factory.SubFactory(InstallationFactory)
-    name = factory.Sequence(lambda n: f"Name {n}")
-    owner = factory.Sequence(lambda n: f"Owner {n}")
-
+    full_name = factory.Sequence(lambda n: f"repo/repo-{n}")
