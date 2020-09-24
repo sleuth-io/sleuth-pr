@@ -23,5 +23,7 @@ up: ## Start the application for development
 
 
 format: ## Format Python code
+	black app --target-version py38
 	black sleuthpr --target-version py38
 	reorder-python-imports --py38-plus `find sleuthpr -name "*.py"` || black sleuthpr --target-version py38
+	reorder-python-imports --py38-plus `find app -name "*.py"` || black app --target-version py38
