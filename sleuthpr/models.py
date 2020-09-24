@@ -2,14 +2,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
+from typing import Type
 
 from django.db import models
 from django.db.models import CASCADE
 from django.db.models import TextChoices
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
+from marshmallow import Schema
 
 from sleuthpr.services import scm
 from sleuthpr.services.scm import InstallationClient
@@ -18,6 +22,7 @@ from sleuthpr.services.scm import InstallationClient
 @dataclass
 class RepositoryIdentifier:
     full_name: str
+    remote_id: Optional[str] = None
 
 
 class Provider(TextChoices):
@@ -48,10 +53,11 @@ class Repository(models.Model):
     installation = models.ForeignKey(
         Installation,
         on_delete=CASCADE,
-        related_name="repository_ids",
+        related_name="repositories",
         verbose_name=_("installation"),
     )
     full_name = models.CharField(max_length=255)
+    remote_id = models.CharField(max_length=512, db_index=True, null=True)
 
     @property
     def identifier(self):
@@ -117,36 +123,38 @@ class Rule(models.Model):
     order = models.IntegerField()
 
 
-class TriggerType(TextChoices):
-    PR_UPDATED = ("pr_updated", "PR Updated")
-    PR_CREATED = ("pr_created", "PR Created")
-    CRON_5_MINUTES = ("cron", "Every 5 minutes")
+class TriggerType:
+    def __init__(self, key: str, label: str):
+        self.key = key
+        self.label = label
+
+    def __eq__(self, o: Trigger) -> bool:
+        return o.key == self.key
 
 
-class ActionType(TextChoices):
-    MERGE = ("pr_merge", "PR Merge")
-    CLOSE = ("pr_close", "PR Close")
-    ADD_LABEL = ("add_label", "Add Label")
+class ActionType:
+    def __init__(self, key: str, label: str, parameters: Schema):
+        self.key = key
+        self.label = label
+        self.parameters = parameters
 
-    def execute(self, context: Dict):
+    def __eq__(self, o: Trigger) -> bool:
+        return o.key == self.key
+
+    def execute(self, action: Action, target: Any):
         pass
 
 
 @dataclass
-class ConditionVariable:
-    key: str
-    title: str
+class ConditionVariableType:
+    def __init__(self, key: str, label: str, type: Type, default_triggers: List[str]):
+        self.key = key
+        self.label = label
+        self.type = type
+        self.default_triggers = default_triggers
 
-    default_triggers: List[TriggerType]
-
-
-CONDITION_VARIABLES = {
-    "number_reviewers": ConditionVariable(
-        key="number_reviewers",
-        title="Number of reviewers",
-        default_triggers=[TriggerType.PR_CREATED, TriggerType.PR_UPDATED],
-    )
-}
+    def evaluate(self, target: Any):
+        pass
 
 
 class Context:
@@ -162,7 +170,7 @@ class Trigger(models.Model):
         related_name="triggers",
         verbose_name=_("installation"),
     )
-    type = models.CharField(max_length=30, choices=TriggerType.choices)
+    type = models.CharField(max_length=255)
 
 
 class Condition(models.Model):
@@ -187,7 +195,6 @@ class Action(models.Model):
         max_length=255,
         verbose_name=_("type"),
         db_index=True,
-        choices=ActionType.choices,
     )
     description = models.TextField(
         max_length=16384, blank=True, verbose_name=_("description")
@@ -201,48 +208,3 @@ class Action(models.Model):
         verbose_name=_("rule"),
     )
     order = models.IntegerField()
-
-
-def create_rule(
-    repository: Repository,
-    description: str,
-    triggers: List[str],
-    conditions: List[str],
-    actions: List[str],
-):
-    rule = Rule.objects.create(repository=repository, description=description)
-
-    # if no triggers, get them from the variables used in condition expressions
-    if not triggers:
-        triggers = []
-        for condition in conditions:
-            parsed = condition.parse_expression()
-            for variable in parsed.all_variables:
-                for trigger in variable.default_triggers:
-                    triggers.append(trigger)
-
-    for trigger_name in triggers:
-        Trigger.objects.create(rule=rule, type=TriggerType(trigger_name))
-
-    for expression in conditions:
-        Condition.objects.create(rule=rule, description="", expression=expression)
-
-    for idx, action in enumerate(actions):
-        Action.objects.create(rule=rule, priority=idx, parameters={}, type=action)
-
-
-def event_handler(type, data):
-    if type == "pr_updated":
-
-        rules = Rule.objects.filter(triggers__type="pr_updated")
-        for rule in rules:
-            for pull_request in rule.repository.pull_requests:
-
-                context: Context = pull_request.make_context()
-                for condition in rule.conditions:
-                    if not condition.evaluate(context):
-                        # stop processing this rule and go to the next
-                        pass
-
-                for action in rule.actions.order_by("priority"):
-                    action.execute(context)

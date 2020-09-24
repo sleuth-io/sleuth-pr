@@ -26,3 +26,6 @@ class InstallationClient:
 
     def get_content(self, repository: RepositoryIdentifier, path: str) -> Optional[str]:
         pass
+
+    def add_label(self, repository: RepositoryIdentifier, pr_id: int, label_name: str):
+        pass

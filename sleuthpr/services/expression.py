@@ -6,19 +6,19 @@ from typing import List
 
 import pyparsing as pp
 
-from sleuthpr.models import CONDITION_VARIABLES
-from sleuthpr.models import ConditionVariable
+from sleuthpr import registry
+from sleuthpr.models import ConditionVariableType
 
 
 class ParsedExpression:
     def __init__(self, text: str):
         self.expression = expr.parseString(text)[0]
 
-        self.variables: List[ConditionVariable] = []
+        self.variables: List[ConditionVariableType] = []
 
         def collect_vars(token):
             if isinstance(token, Identifier):
-                self.variables.append(CONDITION_VARIABLES[token.name])
+                self.variables.append(registry.get_condition_variable_type(token.name))
 
         self.expression.visit(collect_vars)
 

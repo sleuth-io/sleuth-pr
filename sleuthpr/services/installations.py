@@ -10,15 +10,11 @@ logger = logging.getLogger(__name__)
 
 
 def get(remote_id: str) -> Optional[Installation]:
-    return (
-        Installation.objects.filter(installation_id=remote_id)
-        .filter(active=True)
-        .first()
-    )
+    return Installation.objects.filter(remote_id=remote_id).filter(active=True).first()
 
 
 def delete(remote_id: str) -> bool:
-    Installation.objects.filter(installation_id=remote_id).delete()
+    Installation.objects.filter(remote_id=remote_id).delete()
     logger.info("Deleted installation")
     return True
 
@@ -50,9 +46,13 @@ def create(
     target_type: str,
     target_id: str,
     repository_ids: List[RepositoryIdentifier],
+    provider: str,
 ) -> Installation:
     installation = Installation.objects.create(
-        remote_id=remote_id, target_type=target_type, target_id=target_id
+        remote_id=remote_id,
+        target_type=target_type,
+        target_id=target_id,
+        provider=provider,
     )
 
     if not repository_ids:

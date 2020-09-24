@@ -1,6 +1,5 @@
 import pytest
 
-from sleuthpr.models import ActionType
 from sleuthpr.services.rules import refresh
 from sleuthpr.tests.factories import RepositoryFactory
 
@@ -42,11 +41,11 @@ rules:
     assert 2 == len(rule.actions.all())
 
     action = rule.actions.all()[0]
-    assert ActionType.ADD_LABEL == action.type
+    assert "add_label" == action.type
     assert "lots-of-reviewers" == action.parameters.get("value")
 
     action = rule.actions.all()[1]
-    assert ActionType.ADD_LABEL == action.type
+    assert "add_label" == action.type
     assert "blah" == action.description
     assert "lots-of-reviewers2" == action.parameters.get("value")
 
