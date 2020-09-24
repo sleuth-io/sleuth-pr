@@ -16,8 +16,10 @@ from github import Github
 from github import UnknownObjectException
 
 from sleuthpr.models import Installation
+from sleuthpr.models import PullRequest
 from sleuthpr.models import RepositoryIdentifier
 from sleuthpr.services import installations
+from sleuthpr.services import pull_requests
 from sleuthpr.services import repositories
 from sleuthpr.services import rules
 from sleuthpr.services.scm import InstallationClient
@@ -61,9 +63,9 @@ def on_event(request):
         )
         remote_id = data["installation"]["id"]
         if action == "opened":
-            on_pr_created(remote_id, repository_id, data)
+            on_pr_created(remote_id, repository_id, data["pull_request"])
         elif action == "synchronize":
-            on_pr_updated(remote_id, repository_id, data)
+            on_pr_updated(remote_id, repository_id, data["pull_request"])
     elif event_name == "push":
         repository_id = RepositoryIdentifier(
             data["repository"]["full_name"], remote_id=data["repository"]["id"]
@@ -97,16 +99,18 @@ def on_push(remote_id: str, repository_id: RepositoryIdentifier, data: Dict):
         logger.info("Not a master push")
 
 
-def on_pr_created(remote_id: str, repository_id: RepositoryIdentifier, data: Dict):
+def on_pr_created(remote_id: str, repository_id: RepositoryIdentifier, pr_data: Dict):
     installation = installations.get(remote_id)
     repo = installation.repositories.filter(full_name=repository_id.full_name).first()
-    rules.evaluate(repo, PR_CREATED, data["pull_request"])
+    pr = pull_requests.update(installation, repo, pr_data)
+    rules.evaluate(repo, PR_CREATED, {"pull_request": pr})
 
 
-def on_pr_updated(remote_id: str, repository_id: RepositoryIdentifier, data: Dict):
+def on_pr_updated(remote_id: str, repository_id: RepositoryIdentifier, pr_data: Dict):
     installation = installations.get(remote_id)
     repo = installation.repositories.filter(full_name=repository_id.full_name).first()
-    rules.evaluate(repo, PR_UPDATED, data["pull_request"])
+    pr = pull_requests.update(installation, repo, pr_data)
+    rules.evaluate(repo, PR_UPDATED, {"pull_request": pr})
 
 
 def on_repositories_added(installation_id, data):

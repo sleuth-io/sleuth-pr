@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 from typing import Dict
 from typing import List
 from typing import Set
@@ -7,7 +8,6 @@ import yaml
 
 from sleuthpr import registry
 from sleuthpr.models import Action
-from sleuthpr.models import ActionType
 from sleuthpr.models import Condition
 from sleuthpr.models import Repository
 from sleuthpr.models import Rule
@@ -103,7 +103,7 @@ def refresh(repository: Repository, data: str) -> List[Rule]:
     return rules
 
 
-def evaluate(repository: Repository, trigger_type: TriggerType, pr_data: Dict):
+def evaluate(repository: Repository, trigger_type: TriggerType, context: Dict):
     rules = (
         repository.rules.filter(triggers__type__contains=trigger_type.key)
         .order_by("order")
@@ -114,11 +114,11 @@ def evaluate(repository: Repository, trigger_type: TriggerType, pr_data: Dict):
         for condition in rule.conditions.order_by("order").all():
             expression = ParsedExpression(condition.expression)
             logger.info(f"Evaluating condition {condition.expression}")
-            if expression.execute(number_reviewers=len(pr_data["requested_reviewers"])):
+            if expression.execute(**context):
                 logger.info("Condition was true")
                 for action in rule.actions.order_by("order").all():
                     logger.info(f"Executing action {action.type}")
                     action_type = registry.get_action_type(action.type)
-                    action_type.execute(action, pr_data)
+                    action_type.execute(action, context)
             else:
                 logger.info("Condition was false")

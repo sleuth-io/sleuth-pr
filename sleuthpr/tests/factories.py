@@ -19,3 +19,39 @@ class RepositoryFactory(factory.django.DjangoModelFactory):
 
     installation = factory.SubFactory(InstallationFactory)
     full_name = factory.Sequence(lambda n: f"repo/repo-{n}")
+
+
+class ExternalUserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.ExternalUser
+
+    installation = factory.SubFactory(InstallationFactory)
+    remote_id = factory.Sequence(lambda n: f"user-{n}")
+
+
+class PullRequestFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.PullRequest
+
+    repository = factory.SubFactory(RepositoryFactory)
+    title = factory.Sequence(lambda n: f"My PR {n}")
+    remote_id = factory.Sequence(lambda n: n)
+    source_branch_name = factory.Sequence(lambda n: f"mybranch-{n}")
+    base_branch_name = "master"
+    author = factory.SubFactory(ExternalUserFactory)
+
+
+class PullRequestAssigneeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.PullRequestAssignee
+
+    pull_request = factory.SubFactory(PullRequestFactory)
+    user = factory.SubFactory(ExternalUserFactory)
+
+
+class PullRequestReviewerFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.PullRequestReviewer
+
+    pull_request = factory.SubFactory(PullRequestFactory)
+    user = factory.SubFactory(ExternalUserFactory)

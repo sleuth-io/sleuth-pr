@@ -143,12 +143,13 @@ class Number:
 class Identifier:
     def __init__(self, result):
         self.name = result[0]
+        self.variable = registry.get_condition_variable_type(self.name)
 
     def generate(self):
         return self.name
 
     def eval(self, context: Dict):
-        return context.get(self.name)
+        return self.variable.evaluate(context)
 
     def visit(self, visitor: Callable[[Any], None]):
         visitor(self)

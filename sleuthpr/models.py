@@ -10,6 +10,7 @@ from typing import Type
 
 from django.db import models
 from django.db.models import CASCADE
+from django.db.models import SET_NULL
 from django.db.models import TextChoices
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
@@ -65,15 +66,17 @@ class Repository(models.Model):
 
 
 class ExternalUser(models.Model):
-    name = models.CharField(max_length=512, verbose_name=_("name"), db_index=True)
+    name = models.CharField(
+        max_length=512, verbose_name=_("name"), null=True, db_index=True
+    )
     email = models.EmailField(
-        max_length=512, verbose_name=_("email"), blank=True, db_index=True
+        max_length=512, verbose_name=_("email"), null=True, db_index=True
     )
     username = models.CharField(
-        max_length=512, blank=True, verbose_name=_("username"), db_index=True
+        max_length=512, null=True, verbose_name=_("username"), db_index=True
     )
     remote_id = models.CharField(
-        max_length=512, blank=True, null=True, verbose_name=_("uid"), db_index=True
+        max_length=512, null=True, verbose_name=_("uid"), db_index=True
     )
 
     installation = models.CharField(
@@ -97,12 +100,70 @@ class PullRequest(models.Model):
         verbose_name=_("source branch name"),
         db_index=True,
     )
+    base_branch_name = models.CharField(
+        max_length=1024,
+        blank=True,
+        null=True,
+        verbose_name=_("base branch name"),
+        db_index=True,
+    )
     url = models.URLField(max_length=1024, blank=True, verbose_name=_("url"))
     repository = models.ForeignKey(
         Repository,
         on_delete=CASCADE,
         related_name="pull_requests",
         verbose_name=_("repository"),
+    )
+    author = models.ForeignKey(
+        ExternalUser,
+        related_name="authored_pull_requests",
+        verbose_name=_("author"),
+        on_delete=SET_NULL,
+        null=True,
+    )
+    # todo: add more fields
+
+
+class PullRequestAssignee(models.Model):
+    user = models.ForeignKey(
+        ExternalUser,
+        related_name="assigned_pull_requests",
+        verbose_name=_("user"),
+        on_delete=CASCADE,
+    )
+
+    pull_request = models.ForeignKey(
+        PullRequest,
+        related_name="assignees",
+        verbose_name=_("pull_request"),
+        null=True,
+        on_delete=CASCADE,
+    )
+
+
+class PullRequestReviewer(models.Model):
+    user = models.ForeignKey(
+        ExternalUser,
+        related_name="reviewer_for_pull_requests",
+        verbose_name=_("user"),
+        on_delete=CASCADE,
+    )
+
+    pull_request = models.ForeignKey(
+        PullRequest,
+        related_name="reviewers",
+        verbose_name=_("pull_request"),
+        on_delete=CASCADE,
+    )
+
+
+class PullRequestLabel(models.Model):
+    value = models.CharField(max_length=255, verbose_name=_("value"), db_index=True)
+    pull_request = models.ForeignKey(
+        PullRequest,
+        related_name="labels",
+        verbose_name=_("pull_request"),
+        on_delete=CASCADE,
     )
 
 
@@ -141,7 +202,7 @@ class ActionType:
     def __eq__(self, o: Trigger) -> bool:
         return o.key == self.key
 
-    def execute(self, action: Action, target: Any):
+    def execute(self, action: Action, context: Dict):
         pass
 
 
@@ -153,14 +214,8 @@ class ConditionVariableType:
         self.type = type
         self.default_triggers = default_triggers
 
-    def evaluate(self, target: Any):
+    def evaluate(self, context: Dict):
         pass
-
-
-class Context:
-    pull_request: PullRequest
-    repository: Repository
-    installation: Installation
 
 
 class Trigger(models.Model):
