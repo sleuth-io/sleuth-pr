@@ -20,3 +20,8 @@ def test_basic():
     assert 1 == len(pr.reviewers.all())
     assert 1 == len(pr.labels.all())
     assert "bug" == pr.labels.first().value
+    assert "6dcb09b5b57875f334f61aebed695e2e4193db5e" == pr.source_sha
+    assert not pr.merged
+    assert not pr.draft
+    assert pr.mergeable
+    assert pr.rebaseable

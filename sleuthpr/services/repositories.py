@@ -1,5 +1,8 @@
 import logging
 from typing import List
+from typing import Optional
+
+from django.db.models import QuerySet
 
 from sleuthpr.models import Installation
 from sleuthpr.models import Repository
@@ -49,7 +52,7 @@ def set_repositories(
     return add(installation, repository_ids)
 
 
-def get_all(repository_id: RepositoryIdentifier) -> List[Repository]:
+def get_all(repository_id: RepositoryIdentifier) -> QuerySet[Repository]:
     return (
         Repository.objects.filter(
             full_name=repository_id.full_name, installation__active=True
@@ -57,3 +60,13 @@ def get_all(repository_id: RepositoryIdentifier) -> List[Repository]:
         .select_related("installation")
         .all()
     )
+
+
+def get(
+    installation: Installation, repository_id: RepositoryIdentifier
+) -> Optional[Repository]:
+    return Repository.objects.filter(
+        full_name=repository_id.full_name,
+        installation__active=True,
+        installation=installation,
+    ).first()

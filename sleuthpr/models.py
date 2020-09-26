@@ -20,6 +20,12 @@ from sleuthpr.services import scm
 from sleuthpr.services.scm import InstallationClient
 
 
+class MergeMethod(TextChoices):
+    REBASE = ("rebase", "Rebase")
+    SQUASH = ("squash", "Squash")
+    MERGE = ("merge", "Merge commit")
+
+
 @dataclass
 class RepositoryIdentifier:
     full_name: str
@@ -100,6 +106,13 @@ class PullRequest(models.Model):
         verbose_name=_("source branch name"),
         db_index=True,
     )
+    source_sha = models.CharField(
+        max_length=1024,
+        blank=True,
+        null=True,
+        verbose_name=_("source sha"),
+        db_index=True,
+    )
     base_branch_name = models.CharField(
         max_length=1024,
         blank=True,
@@ -107,7 +120,7 @@ class PullRequest(models.Model):
         verbose_name=_("base branch name"),
         db_index=True,
     )
-    url = models.URLField(max_length=1024, blank=True, verbose_name=_("url"))
+    url = models.URLField(max_length=1024, blank=True, null=True, verbose_name=_("url"))
     repository = models.ForeignKey(
         Repository,
         on_delete=CASCADE,
@@ -121,7 +134,22 @@ class PullRequest(models.Model):
         on_delete=SET_NULL,
         null=True,
     )
-    # todo: add more fields
+    draft = models.BooleanField(default=False)
+    merged = models.BooleanField(default=False)
+    mergeable = models.BooleanField(default=False)
+    rebaseable = models.BooleanField(default=False)
+
+
+class PullRequestCheck(models.Model):
+    pull_request = models.ForeignKey(
+        PullRequest,
+        related_name="checks",
+        verbose_name=_("pull_request"),
+        null=True,
+        on_delete=CASCADE,
+    )
+
+    remote_id = models.CharField(max_length=512, db_index=True)
 
 
 class PullRequestAssignee(models.Model):

@@ -24,16 +24,26 @@ def update(installation: Installation, repository: Repository, data: Dict):
     if not pr:
         pr = PullRequest(repository=repository)
 
+    pr.remote_id = remote_id
+    pr.source_branch_name = data["head"]["ref"]
+    pr.source_sha = data["head"]["sha"]
+    pr.base_branch_name = data["base"]["ref"]
+    pr.save()
+
+    if not "title" in data:
+        return pr
+
     created = parser.parse(data["created_at"])
     author = _get_user(installation, data["user"])
-    pr.remote_id = remote_id
     pr.title = data["title"]
     pr.description = data.get("body")
     pr.url = data["html_url"]
     pr.on = created
     pr.author = author
-    pr.source_branch_name = data["head"]["ref"]
-    pr.base_branch_name = data["base"]["ref"]
+    pr.draft = data["draft"]
+    pr.merged = data["merged"]
+    pr.mergeable = data["mergeable"] or False
+    pr.rebaseable = data["rebaseable"] or False
     pr.save()
 
     pr.assignees.all().delete()

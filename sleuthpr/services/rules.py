@@ -1,10 +1,12 @@
 import logging
+from dataclasses import dataclass
 from typing import Any
 from typing import Dict
 from typing import List
 from typing import Set
 
 import yaml
+from django.utils.text import slugify
 
 from sleuthpr import registry
 from sleuthpr.models import Action
@@ -101,6 +103,27 @@ def refresh(repository: Repository, data: str) -> List[Rule]:
         logger.info(f"Loaded {len(rules)} rules")
 
     return rules
+
+
+@dataclass
+class EvaluatedCondition:
+    condition: Condition
+    evaluation: bool
+
+
+def evaluate_conditions(repository: Repository, context: Dict):
+    rules = repository.rules.order_by("order").all()
+    result = []
+    for rule in rules:
+        logger.info(f"Evaluating rule {rule.id}")
+        for condition in rule.conditions.order_by("order").all():
+            expression = ParsedExpression(condition.expression)
+            result.append(
+                EvaluatedCondition(
+                    condition=condition, evaluation=expression.execute(**context)
+                )
+            )
+    return result
 
 
 def evaluate(repository: Repository, trigger_type: TriggerType, context: Dict):

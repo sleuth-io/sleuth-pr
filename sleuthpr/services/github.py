@@ -10,21 +10,26 @@ import jwt
 import requests
 from django.core.cache import cache
 from django.http import HttpResponse
+from django.utils.text import slugify
 from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
+from github import Consts
 from github import Github
 from github import UnknownObjectException
 
 from sleuthpr.models import Installation
+from sleuthpr.models import MergeMethod
 from sleuthpr.models import PullRequest
 from sleuthpr.models import RepositoryIdentifier
 from sleuthpr.services import installations
 from sleuthpr.services import pull_requests
 from sleuthpr.services import repositories
 from sleuthpr.services import rules
+from sleuthpr.services.expression import ParsedExpression
+from sleuthpr.services.scm import CheckDetails
 from sleuthpr.services.scm import InstallationClient
-from sleuthpr.sleuthpr import PR_CREATED
-from sleuthpr.sleuthpr import PR_UPDATED
+from sleuthpr.triggers import PR_CREATED
+from sleuthpr.triggers import PR_UPDATED
 
 logger = logging.getLogger(__name__)
 
@@ -72,10 +77,44 @@ def on_event(request):
         )
         remote_id = data["installation"]["id"]
         on_push(remote_id, repository_id, data)
+    elif event_name == "check_suite":
+        action = data["action"]
+        repository_id = RepositoryIdentifier(
+            data["repository"]["full_name"], remote_id=data["repository"]["id"]
+        )
+        remote_id = data["installation"]["id"]
+        if action == "requested":
+            on_check_suite_requested(remote_id, repository_id, data["check_suite"])
     else:
         logger.info(f"Ignored event {event_name}")
 
     return HttpResponse(f"Event received! - {body}")
+
+
+def on_check_suite_requested(
+    remote_id: str, repository_id: RepositoryIdentifier, data: Dict
+):
+    installation = installations.get(remote_id)
+    repository = repositories.get(installation, repository_id)
+    for pr_data in data["pull_requests"]:
+        pr = pull_requests.update(installation, repository, pr_data)
+        ctx = {"pull_request": pr}
+        for cond in rules.evaluate_conditions(repository, ctx):
+            key = f"{slugify(cond.condition.rule.title)}/{cond.condition.order}"
+            body = "Variable values:\n"
+            for var in ParsedExpression(cond.condition.expression).variables:
+                body += f"* {var.label} ({var.key}) = {var.evaluate(ctx)}"
+            installation.client.add_check(
+                repository.identifier,
+                key,
+                pr.source_sha,
+                details=CheckDetails(
+                    title=f"Rule {cond.condition.rule.title}, Condition {cond.condition.order}",
+                    summary=f"Expression: {cond.condition.expression}",
+                    body=body,
+                    success=cond.evaluation,
+                ),
+            )
 
 
 def on_push(remote_id: str, repository_id: RepositoryIdentifier, data: Dict):
@@ -186,6 +225,56 @@ class GitHubInstallationClient(InstallationClient):
         repo = gh.get_repo(repository.full_name, lazy=True)
         repo.get_pull(pr_id).add_to_labels(label_name)
         logger.info(f"Added label {label_name} to pr {pr_id}")
+
+    def merge(
+        self,
+        repository: RepositoryIdentifier,
+        pr_id: int,
+        commit_title: Optional[str],
+        commit_message: Optional[str],
+        method: MergeMethod,
+        sha: str,
+    ):
+        gh = Github(self._get_installation_token())
+        repo = gh.get_repo(repository.full_name, lazy=True)
+        repo.get_pull(pr_id).merge(
+            commit_title=commit_title,
+            commit_message=commit_message,
+            merge_method=method.value,
+            sha=sha,
+        )
+        logger.info(f"Merged pr {pr_id}")
+
+    def add_check(
+        self,
+        repository: RepositoryIdentifier,
+        key: str,
+        source_sha: str,
+        details: CheckDetails,
+    ):
+        gh = Github(self._get_installation_token())
+        repo = gh.get_repo(repository.full_name, lazy=True)
+        headers, data = repo._requester.requestJsonAndCheck(
+            "POST",
+            repo.url + "/check-runs",
+            headers={"Accept": "application/vnd.github.antiope-preview+json"},
+            input=dict(
+                head_sha=source_sha,
+                name=key,
+                output=dict(
+                    title=details.title, summary=details.summary, text=details.body
+                ),
+                status="completed",
+                conclusion="success" if details.success else "failure",
+            ),
+        )
+        logger.info(
+            f"Status check on {source_sha} created for {key}: {details.success}"
+        )
+        # todo: check response?
+        # for pr_data in data["pull_requests"]:
+        #     pull_requests.update(repo.installation, repo, pr_data)
+        return data["id"]
 
     def _get_installation_token(self):
         key = f"installation_token.{self.installation.provider}.{self.installation.remote_id}"
