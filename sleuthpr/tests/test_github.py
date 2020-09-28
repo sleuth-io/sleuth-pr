@@ -4,7 +4,7 @@ from os.path import join
 
 import pytest
 
-from sleuthpr.services.github import _update_pull_request
+from sleuthpr.services.github.events import _update_pull_request
 from sleuthpr.tests.factories import RepositoryFactory
 
 
@@ -13,9 +13,10 @@ def test_update_pull_request():
     repository = RepositoryFactory()
     with open(join(dirname(__file__), "pr.json")) as f:
         data = json.load(f)
-    pr = _update_pull_request(repository.installation, repository, data)
+    pr, dirty = _update_pull_request(repository.installation, repository, data)
 
-    assert 1347 == pr.remote_id
+    assert dirty
+    assert "1347" == pr.remote_id
 
     assert 2 == len(pr.assignees.all())
     assert 1 == len(pr.reviewers.all())
@@ -26,3 +27,7 @@ def test_update_pull_request():
     assert not pr.draft
     assert pr.mergeable
     assert pr.rebaseable
+
+    pr, dirty = _update_pull_request(repository.installation, repository, data)
+
+    assert not dirty

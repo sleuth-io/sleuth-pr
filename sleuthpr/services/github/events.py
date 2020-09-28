@@ -170,8 +170,8 @@ def _update_pull_request(
     assignees = set()
     for assignee_data in data.get("assignees", []):
         assignees.add(_get_user(installation, assignee_data))
-    existing_assignees = {person.remote_id for person in pr.assignees.all()}
-    if {person.remote_id for person in assignees} != existing_assignees:
+    existing_assignees = {person.user.remote_id for person in pr.assignees.all()}
+    if {str(person.remote_id) for person in assignees} != existing_assignees:
         pr.assignees.all().delete()
         for assignee_data in data.get("assignees", []):
             person = _get_user(installation, assignee_data)
@@ -182,12 +182,11 @@ def _update_pull_request(
     reviewers = set()
     for reviewer_data in data.get("requested_reviewers", []):
         reviewers.add(_get_user(installation, reviewer_data))
-    existing_reviewers = {person.remote_id for person in pr.reviewers.all()}
-    if {person.remote_id for person in reviewers} != existing_reviewers:
+    existing_reviewers = {person.user.remote_id for person in pr.reviewers.all()}
+    if {str(reviewer.remote_id) for reviewer in reviewers} != existing_reviewers:
         pr.reviewers.all().delete()
-        for reviewer_data in data.get("reviewers", []):
-            person = _get_user(installation, reviewer_data)
-            PullRequestReviewer.objects.create(user=person, pull_request=pr)
+        for reviewer in reviewers:
+            PullRequestReviewer.objects.create(user=reviewer, pull_request=pr)
         is_dirty = True
         logger.info(f"DIRTY!!!!! reviewers old {existing_reviewers} new {reviewers}")
 
