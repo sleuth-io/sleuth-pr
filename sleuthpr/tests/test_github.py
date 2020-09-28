@@ -4,16 +4,17 @@ from os.path import join
 
 import pytest
 
-from sleuthpr.services import pull_requests
+from sleuthpr.services.github import _update_pull_request
 from sleuthpr.tests.factories import RepositoryFactory
 
 
 @pytest.mark.django_db
-def test_basic():
+def test_update_pull_request():
     repository = RepositoryFactory()
     with open(join(dirname(__file__), "pr.json")) as f:
         data = json.load(f)
-    pr = pull_requests.update(repository.installation, repository, data)
+    pr = _update_pull_request(repository.installation, repository, data)
+
     assert 1347 == pr.remote_id
 
     assert 2 == len(pr.assignees.all())

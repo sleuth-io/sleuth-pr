@@ -111,12 +111,13 @@ class EvaluatedCondition:
     evaluation: bool
 
 
-def evaluate_conditions(repository: Repository, context: Dict):
-    rules = repository.rules.order_by("order").all()
+def evaluate_conditions(
+    repository: Repository, context: Dict
+) -> List[EvaluatedCondition]:
     result = []
-    for rule in rules:
+    for rule in repository.ordered_rules:
         logger.info(f"Evaluating rule {rule.id}")
-        for condition in rule.conditions.order_by("order").all():
+        for condition in rule.ordered_conditions:
             expression = ParsedExpression(condition.expression)
             result.append(
                 EvaluatedCondition(

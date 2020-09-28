@@ -38,6 +38,11 @@ class Provider(TextChoices):
     BITBUCKET = ("bitbucket", "Bitbucket")
 
 
+class CheckStatus(TextChoices):
+    SUCCESS = ("success", "Success")
+    FAILURE = ("failure", "Failure")
+
+
 class Installation(models.Model):
     # remote identifier for this installation
     remote_id = models.CharField(max_length=512, db_index=True)
@@ -69,6 +74,10 @@ class Repository(models.Model):
     @property
     def identifier(self):
         return RepositoryIdentifier(full_name=self.full_name)
+
+    @property
+    def ordered_rules(self):
+        return self.rules.order_by("order").all()
 
 
 class ExternalUser(models.Model):
@@ -140,18 +149,6 @@ class PullRequest(models.Model):
     rebaseable = models.BooleanField(default=False)
 
 
-class PullRequestCheck(models.Model):
-    pull_request = models.ForeignKey(
-        PullRequest,
-        related_name="checks",
-        verbose_name=_("pull_request"),
-        null=True,
-        on_delete=CASCADE,
-    )
-
-    remote_id = models.CharField(max_length=512, db_index=True)
-
-
 class PullRequestAssignee(models.Model):
     user = models.ForeignKey(
         ExternalUser,
@@ -210,6 +207,10 @@ class Rule(models.Model):
         verbose_name=_("repository"),
     )
     order = models.IntegerField()
+
+    @property
+    def ordered_conditions(self):
+        return self.conditions.order_by("order").all()
 
 
 class TriggerType:
@@ -271,6 +272,28 @@ class Condition(models.Model):
         verbose_name=_("rule"),
     )
     order = models.IntegerField()
+
+
+class ConditionCheckRun(models.Model):
+    condition = models.ForeignKey(
+        Condition,
+        related_name="checks",
+        verbose_name=_("condition"),
+        null=True,
+        on_delete=CASCADE,
+    )
+
+    pull_request = models.ForeignKey(
+        PullRequest,
+        related_name="checks",
+        verbose_name=_("pull_request"),
+        null=True,
+        on_delete=CASCADE,
+    )
+
+    status = models.CharField(max_length=50, db_index=True, choices=CheckStatus.choices)
+
+    remote_id = models.CharField(max_length=512, db_index=True)
 
 
 class Action(models.Model):

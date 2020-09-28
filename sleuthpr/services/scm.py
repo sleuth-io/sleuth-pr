@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import typing
 from dataclasses import dataclass
-from typing import Any
-from typing import Dict
 from typing import List
 from typing import Optional
 
@@ -11,7 +9,6 @@ if typing.TYPE_CHECKING:
     from sleuthpr.models import (
         Installation,
         RepositoryIdentifier,
-        PullRequest,
         MergeMethod,
     )
 
@@ -61,5 +58,15 @@ class InstallationClient:
         key: str,
         source_sha: str,
         details: CheckDetails,
+    ):
+        pass
+
+    def update_check(
+        self,
+        repository: RepositoryIdentifier,
+        key: str,
+        source_sha: str,
+        details: CheckDetails,
+        remote_check_id: str,
     ):
         pass
