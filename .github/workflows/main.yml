@@ -1,6 +1,6 @@
 name: Sleuth PR
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -22,7 +22,7 @@ jobs:
         # This path is specific to Ubuntu
         path: ~/.cache/pip
         # Look to see if there is a cache hit for the corresponding requirements file
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('setup.cfg') }}
         restore-keys: |
           ${{ runner.os }}-pip-
           ${{ runner.os }}-

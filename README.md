@@ -21,6 +21,12 @@ Quickstart Guide
 - pip install -r requirements.txt
 - make run
 
+Release Guide
+-------------
+
+- Tag as vMAJOR.MINOR.PATCH (either via the CLI or GitHub UI)
+- Sit back and relax by watching some [Sleuth TV](https://www.youtube.com/channel/UCmIIOHKgJnGQruIVD_Zx71g)
+
 Contributors
 ------------
 
