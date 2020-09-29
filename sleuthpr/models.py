@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
-from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -18,6 +16,9 @@ from marshmallow import Schema
 
 from sleuthpr.services import scm
 from sleuthpr.services.scm import InstallationClient
+
+
+# pylint: disable=W0622
 
 
 class MergeMethod(TextChoices):

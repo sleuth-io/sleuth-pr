@@ -1,2 +1,2 @@
-from .scm import GitHubInstallationClient
-from .view import on_event
+from .scm import GitHubInstallationClient  # noqa
+from .view import on_event  # noqa

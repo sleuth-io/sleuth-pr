@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 @csrf_exempt
 def on_event(request):
     event_name = request.headers.get("X-GitHub-Event")
-    delivery_id = request.headers.get("X-GitHub-Delivery")
+    # delivery_id = request.headers.get("X-GitHub-Delivery")
 
     # todo: validate signature
 

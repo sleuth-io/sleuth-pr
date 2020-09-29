@@ -28,7 +28,6 @@ def get_client(installation: Installation):
         return GitHubInstallationClient(installation)
     else:
         raise ValueError(f"Unsupported provider: {installation.provider}")
-    pass
 
 
 class InstallationClient:

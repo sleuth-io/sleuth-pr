@@ -1,12 +1,10 @@
 import logging
 from dataclasses import dataclass
-from typing import Any
 from typing import Dict
 from typing import List
 from typing import Set
 
 import yaml
-from django.utils.text import slugify
 
 from sleuthpr import registry
 from sleuthpr.models import Action

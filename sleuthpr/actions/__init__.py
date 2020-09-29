@@ -1,1 +1,1 @@
-from .add_label import AddLabelActionType
+from .add_label import AddLabelActionType  # noqa

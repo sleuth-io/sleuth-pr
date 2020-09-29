@@ -21,6 +21,18 @@ endif
 up: ## Start the application for development
 	bin/run-web-dev.sh
 
+lint: ## Run Python linters
+	flake8 app
+	flake8 sleuthpr
+	pylint app
+	pylint sleuthpr
+
+check-format: lint ## Check Python code formatting
+	black app --check --target-version py38
+	black sleuthpr --check --target-version py38
+	reorder-python-imports --py38-plus `find sleuthpr -name "*.py"`
+	reorder-python-imports --py38-plus `find app -name "*.py"`
+
 
 format: ## Format Python code
 	black app --target-version py38

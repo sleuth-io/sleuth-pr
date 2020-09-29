@@ -17,8 +17,6 @@ from django.contrib import admin
 from django.urls import include
 from django.urls import path
 
-import sleuthpr
-
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("sleuthpr/", include("sleuthpr.urls")),

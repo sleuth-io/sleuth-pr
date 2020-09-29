@@ -18,7 +18,7 @@ rules:
           expression: "number_reviewers>3"
       actions:
         - add_label: "lots-of-reviewers"
-        - add_label: 
+        - add_label:
             description: "blah"
             parameters: "lots-of-reviewers2"
 """

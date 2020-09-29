@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -184,5 +183,7 @@ and_condition = (condition + pp.ZeroOrMore(and_ + condition)).setParseAction(
     AndCondition
 )
 
+# pylint: disable=expression-not-assigned
 expr << (and_condition + pp.ZeroOrMore(or_ + and_condition))
+
 expr = expr.setParseAction(Expression)

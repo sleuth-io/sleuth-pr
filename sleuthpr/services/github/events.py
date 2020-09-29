@@ -14,14 +14,10 @@ from sleuthpr.models import PullRequestLabel
 from sleuthpr.models import PullRequestReviewer
 from sleuthpr.models import Repository
 from sleuthpr.models import RepositoryIdentifier
-from sleuthpr.services import checks
 from sleuthpr.services import external_users
 from sleuthpr.services import installations
 from sleuthpr.services import pull_requests
 from sleuthpr.services import repositories
-from sleuthpr.services import rules
-from sleuthpr.triggers import PR_CREATED
-from sleuthpr.triggers import PR_UPDATED
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +56,7 @@ def on_push(remote_id: str, repository_id: RepositoryIdentifier, data: Dict):
 def on_pr_created(remote_id: str, repository_id: RepositoryIdentifier, pr_data: Dict):
     installation = installations.get(remote_id)
     repo = installation.repositories.filter(full_name=repository_id.full_name).first()
-    pr = _update_pull_request_and_process(installation, repo, pr_data)
+    _update_pull_request_and_process(installation, repo, pr_data)
 
 
 def on_pr_updated(remote_id: str, repository_id: RepositoryIdentifier, pr_data: Dict):
