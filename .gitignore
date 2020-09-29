@@ -1,2 +1,3 @@
 config/dev
 db.sqlite3
+.eggs
