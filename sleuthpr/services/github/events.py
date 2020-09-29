@@ -14,6 +14,7 @@ from sleuthpr.models import PullRequestLabel
 from sleuthpr.models import PullRequestReviewer
 from sleuthpr.models import Repository
 from sleuthpr.models import RepositoryIdentifier
+from sleuthpr.services import checks
 from sleuthpr.services import external_users
 from sleuthpr.services import installations
 from sleuthpr.services import pull_requests
@@ -25,7 +26,14 @@ logger = logging.getLogger(__name__)
 def on_check_suite_requested(
     remote_id: str, repository_id: RepositoryIdentifier, data: Dict
 ):
-    _update_attached_pull_requests(data, remote_id, repository_id)
+    installation = installations.get(remote_id)
+    repository = repositories.get(installation, repository_id)
+    for pr_data in data["pull_requests"]:
+        pr, was_changed = _update_pull_request(installation, repository, pr_data)
+        checks.clear_checks(pr)
+        if was_changed:
+            pull_requests.on_updated(installation, repository, pr)
+        return pr
 
 
 def on_check_run(remote_id: str, repository_id: RepositoryIdentifier, data: Dict):

@@ -12,7 +12,14 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 import os
 from pathlib import Path
 
+import django_opentracing
+import opentracing
+from basictracer import BasicTracer
+from opentracing.scope_managers.tornado import TornadoScopeManager
+from opentracing_instrumentation.client_hooks import install_all_patches
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -125,7 +132,16 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "handlers": {
-        "console": {"class": "logging.StreamHandler", "formatter": "simple"},
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "filters": ["tracing"],
+        },
+    },
+    "filters": {
+        "tracing": {
+            "()": "app.logging.SpanLoggerFilter",
+        }
     },
     "root": {
         "handlers": ["console"],
@@ -133,7 +149,7 @@ LOGGING = {
     },
     "formatters": {
         "simple": {
-            "format": "{levelname} {message}",
+            "format": "{levelname} {event_id} {message}",
             "style": "{",
         },
     },
@@ -142,3 +158,12 @@ LOGGING = {
 CELERY_TASK_ALWAYS_EAGER = True
 
 GITHUB_APP_ID = os.getenv("GITHUB_APP_ID")
+
+tracer = BasicTracer(scope_manager=TornadoScopeManager())
+tracer.register_required_propagators()
+opentracing.set_global_tracer(tracer)
+install_all_patches()
+OPENTRACING_TRACING = django_opentracing.DjangoTracing(tracer)
+
+OPENTRACING_TRACER_CALLABLE = "basictracer.tracer.BasicTracer"
+OPENTRACING_TRACER_PARAMETERS = {}

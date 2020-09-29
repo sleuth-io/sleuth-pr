@@ -17,6 +17,11 @@ from sleuthpr.services.scm import CheckDetails
 logger = logging.getLogger(__name__)
 
 
+def clear_checks(pull_request: PullRequest):
+    ConditionCheckRun.objects.filter(pull_request=pull_request).all().delete()
+    logger.info(f"Cleared existing checks for PR {pull_request.remote_id}")
+
+
 def update_checks(
     installation: Installation, repository: Repository, pull_request: PullRequest
 ):

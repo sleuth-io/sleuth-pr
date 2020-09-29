@@ -3,6 +3,7 @@ from typing import Dict
 
 from celery import shared_task
 from django.conf import settings
+from opentracing import tracer
 
 from sleuthpr.models import RepositoryIdentifier
 from sleuthpr.services import installations
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 @shared_task
 def event_task(event_name: str, data: Dict, **kwargs):
     logger.info(f"GitHub action: {event_name}")
+    tracer.scope_manager.active.span.set_tag("event_name", event_name)
     if event_name == "installation":
         action = data["action"]
         remote_id = data["installation"]["id"]

@@ -20,6 +20,6 @@ def on_event(request):
     data = json.loads(body)
     logger.info(f"event: {event_name} body: {body}")
 
-    event_task(event_name, data)
+    event_task.delay(event_name, data)
 
     return HttpResponse(f"Event received! - {body}", status=202)
