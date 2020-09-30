@@ -25,11 +25,7 @@ class GitHubInstallationClient(InstallationClient):
         self.installation = installation
 
     def get_repositories(self) -> List[RepositoryIdentifier]:
-        repos = (
-            Github(self._get_installation_token())
-            .get_installation(int(self.installation.remote_id))
-            .get_repos()
-        )
+        repos = Github(self._get_installation_token()).get_installation(int(self.installation.remote_id)).get_repos()
         result: List[RepositoryIdentifier] = []
         for repo in repos:
             if repo.permissions.push:
@@ -87,16 +83,12 @@ class GitHubInstallationClient(InstallationClient):
             input=dict(
                 head_sha=source_sha,
                 name=key,
-                output=dict(
-                    title=details.title, summary=details.summary, text=details.body
-                ),
+                output=dict(title=details.title, summary=details.summary, text=details.body),
                 status="completed",
                 conclusion="success" if details.success else "failure",
             ),
         )
-        logger.info(
-            f"Status check on {source_sha} created for {key}: {details.success}"
-        )
+        logger.info(f"Status check on {source_sha} created for {key}: {details.success}")
         # todo: check response?
         # for pr_data in data["pull_requests"]:
         #     _update_pull_request(repo.installation, repo, pr_data)
@@ -109,11 +101,7 @@ class GitHubInstallationClient(InstallationClient):
         if not token:
             jwt_token = _gen_jwt()
             body = {
-                "repository_ids": [
-                    repo.remote_id
-                    for repo in self.installation.repositories.all()
-                    if repo.remote_id
-                ]
+                "repository_ids": [repo.remote_id for repo in self.installation.repositories.all() if repo.remote_id]
             }
             resp = requests.post(
                 headers={

@@ -10,6 +10,7 @@ from sleuthpr.services import installations
 from sleuthpr.services.github.events import on_check_run
 from sleuthpr.services.github.events import on_check_suite_requested
 from sleuthpr.services.github.events import on_installation_created
+from sleuthpr.services.github.events import on_pr_closed
 from sleuthpr.services.github.events import on_pr_created
 from sleuthpr.services.github.events import on_pr_updated
 from sleuthpr.services.github.events import on_push
@@ -41,34 +42,28 @@ def event_task(event_name: str, data: Dict, **kwargs):
             on_repositories_removed(remote_id, data)
     elif event_name == "pull_request":
         action = data["action"]
-        repository_id = RepositoryIdentifier(
-            data["repository"]["full_name"], remote_id=data["repository"]["id"]
-        )
+        repository_id = RepositoryIdentifier(data["repository"]["full_name"], remote_id=data["repository"]["id"])
         remote_id = data["installation"]["id"]
         if action == "opened":
             on_pr_created(remote_id, repository_id, data["pull_request"])
         elif action == "synchronize":
             on_pr_updated(remote_id, repository_id, data["pull_request"])
+        elif action == "closed":
+            on_pr_closed(remote_id, repository_id, data["pull_request"])
     elif event_name == "push":
-        repository_id = RepositoryIdentifier(
-            data["repository"]["full_name"], remote_id=data["repository"]["id"]
-        )
+        repository_id = RepositoryIdentifier(data["repository"]["full_name"], remote_id=data["repository"]["id"])
         remote_id = data["installation"]["id"]
         on_push(remote_id, repository_id, data)
     elif event_name == "check_suite":
         action = data["action"]
-        repository_id = RepositoryIdentifier(
-            data["repository"]["full_name"], remote_id=data["repository"]["id"]
-        )
+        repository_id = RepositoryIdentifier(data["repository"]["full_name"], remote_id=data["repository"]["id"])
         remote_id = data["installation"]["id"]
         if action == "requested":
             on_check_suite_requested(remote_id, repository_id, data["check_suite"])
     elif event_name == "check_run":
         app_id = data["check_run"]["check_suite"]["app"]["id"]
         if app_id != settings.GITHUB_APP_ID:
-            repository_id = RepositoryIdentifier(
-                data["repository"]["full_name"], remote_id=data["repository"]["id"]
-            )
+            repository_id = RepositoryIdentifier(data["repository"]["full_name"], remote_id=data["repository"]["id"])
             remote_id = data["installation"]["id"]
             on_check_run(remote_id, repository_id, data["check_run"])
     else:

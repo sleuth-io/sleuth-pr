@@ -10,9 +10,7 @@ from sleuthpr.models import PullRequest
 
 class AddLabelActionType(ActionType):
     def __init__(self):
-        super().__init__(
-            "add_label", "Add a label to the pull request", AddLabelActionSchema()
-        )
+        super().__init__("add_label", "Add a label to the pull request", AddLabelActionSchema())
 
     def execute(self, action: Action, context: Dict):
         pull_request: PullRequest = context["pull_request"]

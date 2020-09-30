@@ -4,6 +4,7 @@ from os.path import join
 
 import pytest
 
+from sleuthpr.models import TriState
 from sleuthpr.services.github.events import _update_pull_request
 from sleuthpr.tests.factories import RepositoryFactory
 
@@ -25,7 +26,7 @@ def test_update_pull_request():
     assert "6dcb09b5b57875f334f61aebed695e2e4193db5e" == pr.source_sha
     assert not pr.merged
     assert not pr.draft
-    assert pr.mergeable
+    assert pr.mergeable == TriState.TRUE
     assert pr.rebaseable
 
     pr, dirty = _update_pull_request(repository.installation, repository, data)

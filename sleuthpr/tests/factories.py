@@ -27,6 +27,7 @@ class ExternalUserFactory(factory.django.DjangoModelFactory):
 
     installation = factory.SubFactory(InstallationFactory)
     remote_id = factory.Sequence(lambda n: f"user-{n}")
+    username = factory.Sequence(lambda n: f"username-{n}")
 
 
 class PullRequestFactory(factory.django.DjangoModelFactory):
@@ -55,3 +56,11 @@ class PullRequestReviewerFactory(factory.django.DjangoModelFactory):
 
     pull_request = factory.SubFactory(PullRequestFactory)
     user = factory.SubFactory(ExternalUserFactory)
+
+
+class PullRequestLabelFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.PullRequestLabel
+
+    pull_request = factory.SubFactory(PullRequestFactory)
+    value = factory.Sequence(lambda n: f"label-{n}")

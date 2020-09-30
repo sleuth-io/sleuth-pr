@@ -30,13 +30,7 @@ class Expression:
         self.and_conditions = tokens[::2]
 
     def generate(self):
-        return (
-            "("
-            + " OR ".join(
-                (and_condition.generate() for and_condition in self.and_conditions)
-            )
-            + ")"
-        )
+        return "(" + " OR ".join((and_condition.generate() for and_condition in self.and_conditions)) + ")"
 
     def eval(self, context: Dict):
         for cond in self.and_conditions:
@@ -89,8 +83,12 @@ class Condition:
         leval = self.identifier.eval(context)
         reval = self.rval.eval(context)
         if self.op == "=":
+            if isinstance(leval, list):
+                return reval in leval
             return leval == reval
         elif self.op == "!=" or self.op == "<>":
+            if isinstance(leval, list):
+                return reval not in leval
             return leval != reval
         elif self.op == "<":
             return leval < reval
@@ -155,33 +153,48 @@ class Identifier:
         visitor(self.name)
 
 
+class Boolean:
+    def __init__(self, result):
+        self.value = result[0].lower() == "true"
+
+    def generate(self):
+        return self.name
+
+    def eval(self, context: Dict):
+        return self.value
+
+    def visit(self, visitor: Callable[[Any], None]):
+        visitor(self)
+        visitor(self.value)
+
+
 lparen = pp.Suppress("(")
 rparen = pp.Suppress(")")
 
-and_ = pp.Literal("AND")
-or_ = pp.Literal("OR")
+and_ = pp.CaselessLiteral("AND")
+or_ = pp.CaselessLiteral("OR")
 
 op = pp.oneOf(("=", "!=", ">", ">=", "<", "<="))
 
+true_ = pp.CaselessKeyword("true").setParseAction(Boolean)
+false_ = pp.CaselessKeyword("false").setParseAction(Boolean)
+
 alphaword = pp.Word(pp.alphanums + "_")
 string = pp.QuotedString(quoteChar="'").setParseAction(String)
+boolean = true_ | false_
 
-number = (
-    pp.Word(pp.nums) + pp.Optional("." + pp.OneOrMore(pp.Word(pp.nums)))
-).setParseAction(Number)
+number = (pp.Word(pp.nums) + pp.Optional("." + pp.OneOrMore(pp.Word(pp.nums)))).setParseAction(Number)
 
 identifier = alphaword.setParseAction(Identifier)
 
 
 expr = pp.Forward()
 
-condition = pp.Group(identifier + (op + (string | number))).setParseAction(Condition)
+condition = pp.Group(identifier + (op + (string | number | boolean))).setParseAction(Condition)
 
 condition = condition | (lparen + expr + rparen)
 
-and_condition = (condition + pp.ZeroOrMore(and_ + condition)).setParseAction(
-    AndCondition
-)
+and_condition = (condition + pp.ZeroOrMore(and_ + condition)).setParseAction(AndCondition)
 
 # pylint: disable=expression-not-assigned
 expr << (and_condition + pp.ZeroOrMore(or_ + and_condition))

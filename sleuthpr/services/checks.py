@@ -22,22 +22,17 @@ def clear_checks(pull_request: PullRequest):
     logger.info(f"Cleared existing checks for PR {pull_request.remote_id}")
 
 
-def update_checks(
-    installation: Installation, repository: Repository, pull_request: PullRequest
-):
+def update_checks(installation: Installation, repository: Repository, pull_request: PullRequest):
     ctx = {"pull_request": pull_request}
 
     existing_checks: Dict = {
-        run.condition.id: run
-        for run in ConditionCheckRun.objects.filter(pull_request=pull_request).all()
+        run.condition.id: run for run in ConditionCheckRun.objects.filter(pull_request=pull_request).all()
     }
 
     for cond in rules.evaluate_conditions(repository, ctx):
         eval_as_status = CheckStatus.SUCCESS if cond.evaluation else CheckStatus.FAILURE
         if not existing_checks.get(cond.condition.id):
-            logger.info(
-                f"No existing check for condition {cond.condition.id} found, creating a new one"
-            )
+            logger.info(f"No existing check for condition {cond.condition.id} found, creating a new one")
             check_id = installation.client.add_check(
                 repository.identifier,
                 _make_key(cond.condition),
@@ -60,9 +55,7 @@ def update_checks(
                 remote_check_id=existing_checks[cond.condition.id].remote_id,
             )
         else:
-            logger.info(
-                f"Check exists for condition {cond.condition.id} and is up to date, doing nothing"
-            )
+            logger.info(f"Check exists for condition {cond.condition.id} and is up to date, doing nothing")
 
 
 def _make_key(condition: Condition):

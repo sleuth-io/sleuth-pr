@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -44,6 +46,21 @@ class CheckStatus(TextChoices):
     FAILURE = ("failure", "Failure")
 
 
+class TriState(TextChoices):
+    TRUE = ("true", "True")
+    FALSE = ("false", "False")
+    UNKNOWN = ("unknown", "Unknown")
+
+    @classmethod
+    def from_bool(cls, value: Optional[bool, None]) -> TriState:
+        if value:
+            return cls.TRUE
+        elif value is None:
+            return cls.UNKNOWN
+        else:
+            return cls.FALSE
+
+
 class Installation(models.Model):
     # remote identifier for this installation
     remote_id = models.CharField(max_length=512, db_index=True)
@@ -82,31 +99,17 @@ class Repository(models.Model):
 
 
 class ExternalUser(models.Model):
-    name = models.CharField(
-        max_length=512, verbose_name=_("name"), null=True, db_index=True
-    )
-    email = models.EmailField(
-        max_length=512, verbose_name=_("email"), null=True, db_index=True
-    )
-    username = models.CharField(
-        max_length=512, null=True, verbose_name=_("username"), db_index=True
-    )
-    remote_id = models.CharField(
-        max_length=512, null=True, verbose_name=_("uid"), db_index=True
-    )
+    name = models.CharField(max_length=512, verbose_name=_("name"), null=True, db_index=True)
+    email = models.EmailField(max_length=512, verbose_name=_("email"), null=True, db_index=True)
+    username = models.CharField(max_length=512, null=True, verbose_name=_("username"), db_index=True)
+    remote_id = models.CharField(max_length=512, null=True, verbose_name=_("uid"), db_index=True)
 
-    installation = models.CharField(
-        max_length=255, verbose_name=_("provider"), db_index=True
-    )
+    installation = models.CharField(max_length=255, verbose_name=_("provider"), db_index=True)
 
 
 class PullRequest(models.Model):
-    title = models.TextField(
-        default="", max_length=16384, verbose_name=_("title"), db_index=True
-    )
-    description = models.TextField(
-        max_length=16384, blank=True, verbose_name=_("description")
-    )
+    title = models.TextField(default="", max_length=16384, verbose_name=_("title"), db_index=True)
+    description = models.TextField(max_length=16384, blank=True, verbose_name=_("description"))
     on = models.DateTimeField(default=now, verbose_name=_("created on"), db_index=True)
     remote_id = models.CharField(max_length=512, db_index=True)
     source_branch_name = models.CharField(
@@ -146,8 +149,9 @@ class PullRequest(models.Model):
     )
     draft = models.BooleanField(default=False)
     merged = models.BooleanField(default=False)
-    mergeable = models.BooleanField(default=False)
-    rebaseable = models.BooleanField(default=False)
+    mergeable = models.CharField(max_length=15, choices=TriState.choices, default=TriState.UNKNOWN)
+    rebaseable = models.CharField(max_length=15, choices=TriState.choices, default=TriState.UNKNOWN)
+    status = models.CharField(max_length=128, blank=True, null=True, verbose_name=_("status"))
 
 
 class PullRequestAssignee(models.Model):
@@ -194,12 +198,8 @@ class PullRequestLabel(models.Model):
 
 
 class Rule(models.Model):
-    title = models.CharField(
-        default="", max_length=255, verbose_name=_("title"), db_index=True
-    )
-    description = models.TextField(
-        max_length=16384, blank=True, verbose_name=_("description")
-    )
+    title = models.CharField(default="", max_length=255, verbose_name=_("title"), db_index=True)
+    description = models.TextField(max_length=16384, blank=True, verbose_name=_("description"))
     on = models.DateTimeField(default=now, verbose_name=_("created on"), db_index=True)
     repository = models.ForeignKey(
         Repository,
@@ -238,14 +238,23 @@ class ActionType:
 
 @dataclass
 class ConditionVariableType:
-    def __init__(self, key: str, label: str, type: Type, default_triggers: List[str]):
+    def __init__(
+        self,
+        key: str,
+        label: str,
+        type: Type,
+        default_triggers: List[str],
+        evaluate: Optional[Callable[[Dict], Any]] = None,
+    ):
         self.key = key
         self.label = label
         self.type = type
         self.default_triggers = default_triggers
+        self._evaluate = evaluate
 
     def evaluate(self, context: Dict):
-        pass
+        if self._evaluate:
+            return self._evaluate(context)
 
 
 class Trigger(models.Model):
@@ -259,12 +268,8 @@ class Trigger(models.Model):
 
 
 class Condition(models.Model):
-    description = models.TextField(
-        max_length=16384, blank=True, verbose_name=_("description")
-    )
-    expression = models.TextField(
-        max_length=16384, blank=True, verbose_name=_("expression")
-    )
+    description = models.TextField(max_length=16384, blank=True, verbose_name=_("description"))
+    expression = models.TextField(max_length=16384, blank=True, verbose_name=_("expression"))
     on = models.DateTimeField(default=now, verbose_name=_("created on"), db_index=True)
     rule = models.ForeignKey(
         Rule,
@@ -303,9 +308,7 @@ class Action(models.Model):
         verbose_name=_("type"),
         db_index=True,
     )
-    description = models.TextField(
-        max_length=16384, blank=True, verbose_name=_("description")
-    )
+    description = models.TextField(max_length=16384, blank=True, verbose_name=_("description"))
     on = models.DateTimeField(default=now, verbose_name=_("created on"), db_index=True)
     parameters = models.JSONField()
     rule = models.ForeignKey(

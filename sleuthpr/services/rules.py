@@ -62,10 +62,7 @@ def refresh(repository: Repository, data: str) -> List[Rule]:
                         trigger_type = registry.get_trigger_type(trigger_type_key)
                         trigger_types.add(trigger_type.key)
         else:
-            trigger_types = set(
-                registry.get_trigger_type(trigger_type_key).key
-                for trigger_type_key in triggers_data
-            )
+            trigger_types = set(registry.get_trigger_type(trigger_type_key).key for trigger_type_key in triggers_data)
 
         for trigger_type in trigger_types:
             Trigger.objects.create(rule=rule, type=trigger_type)
@@ -109,31 +106,21 @@ class EvaluatedCondition:
     evaluation: bool
 
 
-def evaluate_conditions(
-    repository: Repository, context: Dict
-) -> List[EvaluatedCondition]:
+def evaluate_conditions(repository: Repository, context: Dict) -> List[EvaluatedCondition]:
     result = []
     for rule in repository.ordered_rules:
         logger.info(f"Evaluating rule {rule.id}")
         for condition in rule.ordered_conditions:
             expression = ParsedExpression(condition.expression)
-            result.append(
-                EvaluatedCondition(
-                    condition=condition, evaluation=expression.execute(**context)
-                )
-            )
+            result.append(EvaluatedCondition(condition=condition, evaluation=expression.execute(**context)))
     return result
 
 
 def evaluate(repository: Repository, trigger_type: TriggerType, context: Dict):
-    rules = (
-        repository.rules.filter(triggers__type__contains=trigger_type.key)
-        .order_by("order")
-        .all()
-    )
+    rules = repository.rules.filter(triggers__type__contains=trigger_type.key).order_by("order").all()
     for rule in rules:
         logger.info(f"Evaluating rule {rule.id}")
-        for condition in rule.conditions.order_by("order").all():
+        for condition in rule.ordered_conditions:
             expression = ParsedExpression(condition.expression)
             logger.info(f"Evaluating condition {condition.expression}")
             if expression.execute(**context):

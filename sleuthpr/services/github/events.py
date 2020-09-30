@@ -14,18 +14,20 @@ from sleuthpr.models import PullRequestLabel
 from sleuthpr.models import PullRequestReviewer
 from sleuthpr.models import Repository
 from sleuthpr.models import RepositoryIdentifier
+from sleuthpr.models import TriState
 from sleuthpr.services import checks
 from sleuthpr.services import external_users
 from sleuthpr.services import installations
 from sleuthpr.services import pull_requests
 from sleuthpr.services import repositories
+from sleuthpr.triggers import PR_CLOSED
+from sleuthpr.triggers import PR_CREATED
+from sleuthpr.triggers import PR_UPDATED
 
 logger = logging.getLogger(__name__)
 
 
-def on_check_suite_requested(
-    remote_id: str, repository_id: RepositoryIdentifier, data: Dict
-):
+def on_check_suite_requested(remote_id: str, repository_id: RepositoryIdentifier, data: Dict):
     installation = installations.get(remote_id)
     repository = repositories.get(installation, repository_id)
     for pr_data in data["pull_requests"]:
@@ -43,9 +45,7 @@ def on_check_run(remote_id: str, repository_id: RepositoryIdentifier, data: Dict
 def on_push(remote_id: str, repository_id: RepositoryIdentifier, data: Dict):
     if "refs/heads/master" == data["ref"]:
         installation = installations.get(remote_id)
-        repo = installation.repositories.filter(
-            full_name=repository_id.full_name
-        ).first()
+        repo = installation.repositories.filter(full_name=repository_id.full_name).first()
         files = {}
         for commit in data["commits"]:
             for action in ("modified", "added", "removed"):
@@ -64,13 +64,20 @@ def on_push(remote_id: str, repository_id: RepositoryIdentifier, data: Dict):
 def on_pr_created(remote_id: str, repository_id: RepositoryIdentifier, pr_data: Dict):
     installation = installations.get(remote_id)
     repo = installation.repositories.filter(full_name=repository_id.full_name).first()
-    _update_pull_request_and_process(installation, repo, pr_data)
+    _update_pull_request_and_process(installation, repo, pr_data, event=PR_CREATED)
 
 
 def on_pr_updated(remote_id: str, repository_id: RepositoryIdentifier, pr_data: Dict):
     installation = installations.get(remote_id)
     repo = installation.repositories.filter(full_name=repository_id.full_name).first()
     _update_pull_request_and_process(installation, repo, pr_data)
+
+
+def on_pr_closed(remote_id: str, repository_id: RepositoryIdentifier, pr_data: Dict):
+    installation = installations.get(remote_id)
+    repo = installation.repositories.filter(full_name=repository_id.full_name).first()
+    pr = _update_pull_request_and_process(installation, repo, pr_data, event=PR_CLOSED)
+    pull_requests.delete(repo, pr)
 
 
 def on_repositories_added(installation_id, data):
@@ -102,10 +109,7 @@ def on_repositories_removed(installation_id, data):
 def on_installation_created(installation_id, data):
     target_type = data["installation"]["target_type"]
     target_id = data["installation"]["target_id"]
-    repos = [
-        RepositoryIdentifier(full_name=repo["full_name"], remote_id=repo["id"])
-        for repo in data["repositories"]
-    ]
+    repos = [RepositoryIdentifier(full_name=repo["full_name"], remote_id=repo["id"]) for repo in data["repositories"]]
     installations.create(
         remote_id=installation_id,
         target_type=target_type,
@@ -116,18 +120,19 @@ def on_installation_created(installation_id, data):
 
 
 def _update_pull_request_and_process(
-    installation: Installation, repository: Repository, data: Dict
+    installation: Installation, repository: Repository, data: Dict, event=PR_UPDATED
 ):
     pr, was_changed = _update_pull_request(installation, repository, data)
     if was_changed:
-        pull_requests.on_updated(installation, repository, pr)
+        if event == PR_CREATED:
+            pull_requests.on_created(installation, repository, pr)
+        else:
+            pull_requests.on_updated(installation, repository, pr)
     return pr
 
 
 @transaction.atomic
-def _update_pull_request(
-    installation: Installation, repository: Repository, data: Dict
-) -> Tuple[PullRequest, bool]:
+def _update_pull_request(installation: Installation, repository: Repository, data: Dict) -> Tuple[PullRequest, bool]:
     remote_id = data["number"]
 
     pr: PullRequest = repository.pull_requests.filter(remote_id=remote_id).first()
@@ -161,8 +166,8 @@ def _update_pull_request(
                 author=_get_user(installation, data["user"]),
                 draft=data["draft"],
                 merged=data["merged"],
-                mergeable=data["mergeable"] or False,
-                rebaseable=data["rebaseable"] or False,
+                mergeable=TriState.from_bool(data["mergeable"]),
+                rebaseable=TriState.from_bool(data["rebaseable"]),
             ),
         )
         | is_dirty

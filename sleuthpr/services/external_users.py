@@ -15,8 +15,7 @@ def get_or_create(
 ):
 
     existing_user = ExternalUser.objects.filter(
-        Q(installation=installation)
-        & (Q(username=username) | Q(remote_id=remote_id) | Q(email=email))
+        Q(installation=installation) & (Q(username=username) | Q(remote_id=remote_id) | Q(email=email))
     ).first()
     if not existing_user:
         return ExternalUser.objects.create(
