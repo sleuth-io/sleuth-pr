@@ -1,11 +1,11 @@
 import logging
-from typing import Any
 from typing import Dict
 from typing import Tuple
 
 from dateutil import parser
 from django.db import transaction
 
+from sleuthpr.models import CheckStatus
 from sleuthpr.models import ExternalUser
 from sleuthpr.models import Installation
 from sleuthpr.models import PullRequest
@@ -14,21 +14,24 @@ from sleuthpr.models import PullRequestLabel
 from sleuthpr.models import PullRequestReviewer
 from sleuthpr.models import Repository
 from sleuthpr.models import RepositoryIdentifier
+from sleuthpr.models import ReviewState
 from sleuthpr.models import TriState
+from sleuthpr.services import branches
 from sleuthpr.services import checks
 from sleuthpr.services import external_users
 from sleuthpr.services import installations
 from sleuthpr.services import pull_requests
 from sleuthpr.services import repositories
+from sleuthpr.services import rules
 from sleuthpr.triggers import PR_CLOSED
 from sleuthpr.triggers import PR_CREATED
 from sleuthpr.triggers import PR_UPDATED
+from sleuthpr.util import dirty_set_all
 
 logger = logging.getLogger(__name__)
 
 
-def on_check_suite_requested(installation: Installation, repository_id: RepositoryIdentifier, data: Dict):
-    repository = repositories.get(installation, repository_id)
+def on_check_suite_requested(installation: Installation, repository: Repository, data: Dict):
     for pr_data in data["pull_requests"]:
         pr, was_changed = _update_pull_request(installation, repository, pr_data)
         checks.clear_checks(pr)
@@ -36,15 +39,30 @@ def on_check_suite_requested(installation: Installation, repository_id: Reposito
             pull_requests.on_updated(installation, repository, pr)
 
 
-def on_check_run(installation: Installation, repository_id: RepositoryIdentifier, data: Dict):
-    repository = repositories.get(installation, repository_id)
+def on_pull_request_review(installation: Installation, repository: Repository, data: Dict):
+    pr_data = data["pull_request"]
+    pr, was_changed = _update_pull_request(installation, repository, pr_data)
+    if was_changed:
+        pull_requests.on_updated(installation, repository, pr)
+
+    reviewer = (_get_user(installation, data["review"]["user"]),)
+    pull_requests.update_review(installation, repository, pr, reviewer, ReviewState(data["action"].lower()))
+
+
+def on_status(installation: Installation, repository: Repository, data: Dict):
+    context = data["context"]
+    state = CheckStatus(data["state"])
+    sha = data["commit"]["sha"]
+    pull_requests.update_status(installation, repository, context=context, state=state, sha=sha)
+
+
+def on_check_run(installation: Installation, repository: Repository, data: Dict):
     for pr_data in data["pull_requests"]:
         _update_pull_request_and_process(installation, repository, pr_data)
 
 
-def on_push(installation: Installation, repository_id: RepositoryIdentifier, data: Dict):
+def on_push(installation: Installation, repository: Repository, data: Dict):
     if "refs/heads/master" == data["ref"]:
-        repo = installation.repositories.filter(full_name=repository_id.full_name).first()
         files = {}
         for commit in data["commits"]:
             for action in ("modified", "added", "removed"):
@@ -53,27 +71,30 @@ def on_push(installation: Installation, repository_id: RepositoryIdentifier, dat
 
         if files.get(".sleuth/rules.yml"):
             logger.info("Push contained a rules file change, refreshing")
-            repositories.refresh_rules(installation, repo)
+            rules.refresh(installation, repository)
 
         logger.info("Got a master push")
     else:
         logger.info("Not a master push")
 
-
-def on_pr_created(installation: Installation, repository_id: RepositoryIdentifier, pr_data: Dict):
-    repo = installation.repositories.filter(full_name=repository_id.full_name).first()
-    _update_pull_request_and_process(installation, repo, pr_data, event=PR_CREATED)
-
-
-def on_pr_updated(installation: Installation, repository_id: RepositoryIdentifier, pr_data: Dict):
-    repo = installation.repositories.filter(full_name=repository_id.full_name).first()
-    _update_pull_request_and_process(installation, repo, pr_data)
+    if data["ref"].startswith("refs/heads/"):
+        branch_name = data["ref"][len("refs/heads/") :]
+        logger.info(f"Detected a head push for {branch_name}")
+        sha = data["after"]
+        branches.update_sha(installation, repository, branch_name, sha)
 
 
-def on_pr_closed(installation: Installation, repository_id: RepositoryIdentifier, pr_data: Dict):
-    repo = installation.repositories.filter(full_name=repository_id.full_name).first()
-    pr = _update_pull_request_and_process(installation, repo, pr_data, event=PR_CLOSED)
-    pull_requests.delete(repo, pr)
+def on_pr_created(installation: Installation, repository: Repository, pr_data: Dict):
+    _update_pull_request_and_process(installation, repository, pr_data, event=PR_CREATED)
+
+
+def on_pr_updated(installation: Installation, repository: Repository, pr_data: Dict):
+    _update_pull_request_and_process(installation, repository, pr_data)
+
+
+def on_pr_closed(installation: Installation, repository: Repository, pr_data: Dict):
+    pr = _update_pull_request_and_process(installation, repository, pr_data, event=PR_CLOSED)
+    pull_requests.delete(repository, pr)
 
 
 def on_repositories_added(installation: Installation, data):
@@ -100,12 +121,12 @@ def on_repositories_removed(installation: Installation, data):
         repositories.remove(installation, repos)
 
 
-def on_installation_created(installation: Installation, data):
+def on_installation_created(remote_id: str, data):
     target_type = data["installation"]["target_type"]
     target_id = data["installation"]["target_id"]
     repos = [RepositoryIdentifier(full_name=repo["full_name"], remote_id=repo["id"]) for repo in data["repositories"]]
     installations.create(
-        remote_id=installation.remote_id,
+        remote_id=remote_id,
         target_type=target_type,
         target_id=target_id,
         repository_ids=repos,
@@ -133,15 +154,7 @@ def _update_pull_request(installation: Installation, repository: Repository, dat
     if not pr:
         pr = PullRequest(repository=repository)
 
-    is_dirty = _dirty_set_all(
-        pr,
-        dict(
-            remote_id=str(remote_id),
-            source_branch_name=data["head"]["ref"],
-            source_sha=data["head"]["sha"],
-            base_branch_name=data["base"]["ref"],
-        ),
-    )
+    is_dirty = _update_pr_headers(data, pr, remote_id)
 
     if is_dirty:
         pr.save()
@@ -149,23 +162,7 @@ def _update_pull_request(installation: Installation, repository: Repository, dat
     if "title" not in data:
         return pr, is_dirty
 
-    is_dirty = (
-        _dirty_set_all(
-            pr,
-            dict(
-                title=data["title"],
-                description=data.get("body"),
-                url=data["html_url"],
-                on=parser.parse(data["created_at"]),
-                author=_get_user(installation, data["user"]),
-                draft=data["draft"],
-                merged=data["merged"],
-                mergeable=TriState.from_bool(data["mergeable"]),
-                rebaseable=TriState.from_bool(data["rebaseable"]),
-            ),
-        )
-        | is_dirty
-    )
+    is_dirty = _update_pr_details(data, installation, pr) | is_dirty
 
     if is_dirty:
         pr.save()
@@ -195,7 +192,6 @@ def _update_pull_request(installation: Installation, repository: Repository, dat
 
     existing_labels = {label.value for label in pr.labels.all()}
     labels = {label_data["name"] for label_data in data.get("labels", [])}
-
     if labels != existing_labels:
         pr.labels.all().delete()
         for label_name in labels:
@@ -206,17 +202,34 @@ def _update_pull_request(installation: Installation, repository: Repository, dat
     return pr, is_dirty
 
 
-def _dirty_set_all(target: Any, attributes: Dict[str, Any]) -> bool:
-    dirty = False
-    for key, value in attributes.items():
-        if not hasattr(target, key):
-            raise ValueError(f"Type in attribute {key} against target {target}")
-        if getattr(target, key) != value:
-            setattr(target, key, value)
-            logger.info(f"DIRTY!!!!! {key} old {getattr(target, key)} new {value}")
-            dirty = True
+def _update_pr_details(data, installation, pr):
+    return dirty_set_all(
+        pr,
+        dict(
+            title=data["title"],
+            description=data.get("body"),
+            url=data["html_url"],
+            on=parser.parse(data["created_at"]),
+            author=_get_user(installation, data["user"]),
+            draft=data["draft"],
+            merged=data.get("merged", False),
+            mergeable=TriState.from_bool(data.get("mergeable")),
+            rebaseable=TriState.from_bool(data.get("rebaseable")),
+        ),
+    )
 
-    return dirty
+
+def _update_pr_headers(data, pr, remote_id):
+    return dirty_set_all(
+        pr,
+        dict(
+            remote_id=str(remote_id),
+            source_branch_name=data["head"]["ref"],
+            source_sha=data["head"]["sha"],
+            base_branch_name=data["base"]["ref"],
+            base_sha=data["head"]["sha"],
+        ),
+    )
 
 
 def _get_user(installation: Installation, data: Dict) -> ExternalUser:

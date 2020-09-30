@@ -7,7 +7,7 @@ rules:
         - description: "Number of reviewers is more than 3"
           expression: "number_reviewers>3"
       actions:
-        - add_label: "lots-of-reviewers"
-        - add_label:
+        - add_pull_request_label: "lots-of-reviewers"
+        - add_pull_request_label:
             description: "blah"
             parameters: "lots-of-reviewers2"

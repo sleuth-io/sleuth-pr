@@ -30,7 +30,7 @@ class Expression:
         self.and_conditions = tokens[::2]
 
     def generate(self):
-        return "(" + " OR ".join((and_condition.generate() for and_condition in self.and_conditions)) + ")"
+        return "(" + " OR ".join((c.generate() for c in self.and_conditions)) + ")"
 
     def eval(self, context: Dict):
         for cond in self.and_conditions:
@@ -51,7 +51,7 @@ class AndCondition:
         self.conditions = tokens[::2]
 
     def generate(self):
-        result = " AND ".join((condition.generate() for condition in self.conditions))
+        result = " AND ".join((c.generate() for c in self.conditions))
         if len(self.conditions) > 1:
             result = "(" + result + ")"
         return result
@@ -88,20 +88,46 @@ class Condition:
         reval = self.rval.eval(context)
         if self.op == "=":
             if isinstance(leval, list):
-                return reval in leval
+                if isinstance(reval, int):
+                    return len(leval) == reval
+                else:
+                    return reval in leval
             return leval == reval
         elif self.op == "!=" or self.op == "<>":
             if isinstance(leval, list):
-                return reval not in leval
+                if isinstance(reval, int):
+                    return len(leval) != reval
+                else:
+                    return reval not in leval
             return leval != reval
         elif self.op == "<":
+            if isinstance(leval, list):
+                if isinstance(reval, int):
+                    return len(leval) < reval
+                else:
+                    raise ValueError("Cannot compare a non-int to a list")
             return leval < reval
         elif self.op == ">":
+            if isinstance(leval, list):
+                if isinstance(reval, int):
+                    return len(leval) > reval
+                else:
+                    raise ValueError("Cannot compare a non-int to a list")
             return leval > reval
         elif self.op == "<=":
+            if isinstance(leval, list):
+                if isinstance(reval, int):
+                    return len(leval) <= reval
+                else:
+                    raise ValueError("Cannot compare a non-int to a list")
             return leval <= reval
         elif self.op == ">=":
-            return leval <= reval
+            if isinstance(leval, list):
+                if isinstance(reval, int):
+                    return len(leval) >= reval
+                else:
+                    raise ValueError("Cannot compare a non-int to a list")
+            return leval >= reval
         raise ValueError()
 
     def visit(self, visitor: Callable[[Any], None]):
@@ -118,7 +144,7 @@ class String:
     def generate(self):
         return "'{}'".format(self.value)
 
-    def eval(self, context: Dict):
+    def eval(self, _: Dict):
         return self.value
 
     def visit(self, visitor: Callable[[Any], None]):
@@ -133,7 +159,7 @@ class Number:
     def generate(self):
         return self.value
 
-    def eval(self, context: Dict):
+    def eval(self, _: Dict):
         return int(self.value)
 
     def visit(self, visitor: Callable[[Any], None]):
@@ -162,9 +188,9 @@ class Boolean:
         self.value = result[0].lower() == "true"
 
     def generate(self):
-        return self.name
+        return self.value
 
-    def eval(self, context: Dict):
+    def eval(self, _: Dict):
         return self.value
 
     def visit(self, visitor: Callable[[Any], None]):
@@ -183,7 +209,7 @@ op = pp.oneOf(("=", "!=", ">", ">=", "<", "<="))
 true_ = pp.CaselessKeyword("true").setParseAction(Boolean)
 false_ = pp.CaselessKeyword("false").setParseAction(Boolean)
 
-alphaword = pp.Word(pp.alphanums + "_")
+alphaword = pp.Word(pp.alphanums + "_" + "-")
 string = pp.QuotedString(quoteChar="'").setParseAction(String)
 boolean = true_ | false_
 

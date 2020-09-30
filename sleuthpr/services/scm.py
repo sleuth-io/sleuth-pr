@@ -1,15 +1,19 @@
 from __future__ import annotations
 
-import typing
 from dataclasses import dataclass
 from typing import List
 from typing import Optional
+from typing import Tuple
+from typing import TYPE_CHECKING
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from sleuthpr.models import (
         Installation,
         RepositoryIdentifier,
         MergeMethod,
+        PullRequest,
+        Repository,
+        CheckStatus,
     )
 
 
@@ -67,5 +71,28 @@ class InstallationClient:
         source_sha: str,
         details: CheckDetails,
         remote_check_id: str,
+    ):
+        pass
+
+    def update_pull_request(
+        self,
+        repository: RepositoryIdentifier,
+        pr_id: int,
+        sha: str,
+    ):
+        pass
+
+    def get_pull_requests(self, repository: Repository) -> List[PullRequest]:
+        pass
+
+    def get_statuses(self, repository: RepositoryIdentifier, sha: str) -> List[Tuple[str, CheckStatus]]:
+        pass
+
+    def comment_on_pull_request(
+        self,
+        repository: RepositoryIdentifier,
+        pr_id: int,
+        sha: str,
+        message: str,
     ):
         pass

@@ -44,6 +44,8 @@ class Provider(TextChoices):
 class CheckStatus(TextChoices):
     SUCCESS = ("success", "Success")
     FAILURE = ("failure", "Failure")
+    PENDING = ("pending", "Pending")
+    ERROR = ("error", "Error")
 
 
 class TriState(TextChoices):
@@ -59,6 +61,14 @@ class TriState(TextChoices):
             return cls.UNKNOWN
         else:
             return cls.FALSE
+
+
+class ReviewState(TextChoices):
+    APPROVED = ("approved", "Approved")
+    DISMISSED = ("dismissed", "Dismissed")
+    CHANGES_REQUESTED = ("changes_requested", "Changes requested")
+    COMMENTED = ("commented", "Commented")
+    PENDING = ("pending", "Pending")
 
 
 class Installation(models.Model):
@@ -107,6 +117,17 @@ class ExternalUser(models.Model):
     installation = models.CharField(max_length=255, verbose_name=_("provider"), db_index=True)
 
 
+class RepositoryBranch(models.Model):
+    name = models.CharField(max_length=255, verbose_name=_("name"), db_index=True)
+    head_sha = models.CharField(max_length=1024, verbose_name=_("head sha"), db_index=True)
+    repository = models.ForeignKey(
+        Repository,
+        on_delete=CASCADE,
+        related_name="branches",
+        verbose_name=_("repository"),
+    )
+
+
 class PullRequest(models.Model):
     title = models.TextField(default="", max_length=16384, verbose_name=_("title"), db_index=True)
     description = models.TextField(max_length=16384, blank=True, verbose_name=_("description"))
@@ -131,6 +152,13 @@ class PullRequest(models.Model):
         blank=True,
         null=True,
         verbose_name=_("base branch name"),
+        db_index=True,
+    )
+    base_sha = models.CharField(
+        max_length=1024,
+        blank=True,
+        null=True,
+        verbose_name=_("base sha"),
         db_index=True,
     )
     url = models.URLField(max_length=1024, blank=True, null=True, verbose_name=_("url"))
@@ -185,6 +213,13 @@ class PullRequestReviewer(models.Model):
         verbose_name=_("pull_request"),
         on_delete=CASCADE,
     )
+    state = models.CharField(
+        max_length=20,
+        verbose_name=_("state"),
+        db_index=True,
+        choices=ReviewState.choices,
+        default=ReviewState.PENDING,
+    )
 
 
 class PullRequestLabel(models.Model):
@@ -192,6 +227,17 @@ class PullRequestLabel(models.Model):
     pull_request = models.ForeignKey(
         PullRequest,
         related_name="labels",
+        verbose_name=_("pull_request"),
+        on_delete=CASCADE,
+    )
+
+
+class PullRequestStatus(models.Model):
+    state = models.CharField(max_length=20, verbose_name=_("state"), db_index=True, choices=CheckStatus.choices)
+    context = models.CharField(max_length=255, verbose_name=_("context"), db_index=True)
+    pull_request = models.ForeignKey(
+        PullRequest,
+        related_name="statuses",
         verbose_name=_("pull_request"),
         on_delete=CASCADE,
     )
@@ -243,7 +289,7 @@ class ConditionVariableType:
         key: str,
         label: str,
         type: Type,
-        default_triggers: List[str],
+        default_triggers: List[TriggerType],
         evaluate: Optional[Callable[[Dict], Any]] = None,
     ):
         self.key = key

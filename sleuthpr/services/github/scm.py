@@ -3,6 +3,7 @@ import os
 from datetime import timedelta
 from typing import List
 from typing import Optional
+from typing import Tuple
 
 import jwt
 import requests
@@ -10,10 +11,15 @@ from django.core.cache import cache
 from django.utils.timezone import now
 from github import Github
 from github import UnknownObjectException
+from github.PaginatedList import PaginatedList
 
+from sleuthpr.models import CheckStatus
 from sleuthpr.models import Installation
 from sleuthpr.models import MergeMethod
+from sleuthpr.models import PullRequest
+from sleuthpr.models import Repository
 from sleuthpr.models import RepositoryIdentifier
+from sleuthpr.services.github.events import _update_pull_request
 from sleuthpr.services.scm import CheckDetails
 from sleuthpr.services.scm import InstallationClient
 
@@ -33,6 +39,66 @@ class GitHubInstallationClient(InstallationClient):
 
         return result
 
+    def get_pull_requests(self, repository: Repository) -> List[PullRequest]:
+        gh = Github(self._get_installation_token())
+        repo = gh.get_repo(repository.full_name, lazy=True)
+
+        def _new_pull_request(_, __, data, *args, **kwargs):
+            pr, _ = _update_pull_request(self.installation, repository, data)
+            return pr
+
+        result = []
+        for pr in PaginatedList(
+            _new_pull_request,
+            repo._requester,
+            repo.url + "/pulls",
+            dict(state="open"),
+        ):  # type: PullRequest
+            logger.info(f"Loaded PR {pr.remote_id}")
+            result.append(pr)
+
+        return result
+
+    def comment_on_pull_request(
+        self,
+        repository: RepositoryIdentifier,
+        pr_id: int,
+        sha: str,
+        message: str,
+    ):
+        gh = Github(self._get_installation_token())
+        repo = gh.get_repo(repository.full_name, lazy=True)
+
+        post_parameters = {
+            "body": message,
+            "commit_id": sha,
+        }
+        headers, data = repo._requester.requestJsonAndCheck("POST", repo.url + "/comments", input=post_parameters)
+
+        # todo: handle response better
+        logger.info(f"Pull request commented for {pr_id}")
+
+    def get_statuses(self, repository: RepositoryIdentifier, sha: str) -> List[Tuple[str, CheckStatus]]:
+        gh = Github(self._get_installation_token())
+        repo = gh.get_repo(repository.full_name, lazy=True)
+        result = []
+
+        # hacks necessary to prevent the lib from requesting commits first
+        def _new_status(_, __, data, *args, **kwargs):
+            return data["context"], CheckStatus(data["state"])
+
+        for status in PaginatedList(
+            _new_status,
+            repo._requester,
+            repo.url + "/commits/" + sha + "/status",
+            {"per_page": 100},
+            list_item="statuses",
+        ):
+            logger.info(f"Found {status}")
+            result.append(status)
+
+        return result
+
     def get_content(self, repository: RepositoryIdentifier, path: str) -> Optional[str]:
 
         gh = Github(self._get_installation_token())
@@ -45,7 +111,10 @@ class GitHubInstallationClient(InstallationClient):
     def add_label(self, repository: RepositoryIdentifier, pr_id: int, label_name: str):
         gh = Github(self._get_installation_token())
         repo = gh.get_repo(repository.full_name, lazy=True)
-        repo.get_pull(pr_id).add_to_labels(label_name)
+
+        headers, data = repo._requester.requestJsonAndCheck(
+            "POST", f"{repo.url}/issues/{pr_id}/labels", input=[label_name]
+        )
         logger.info(f"Added label {label_name} to pr {pr_id}")
 
     def merge(
@@ -59,6 +128,7 @@ class GitHubInstallationClient(InstallationClient):
     ):
         gh = Github(self._get_installation_token())
         repo = gh.get_repo(repository.full_name, lazy=True)
+
         repo.get_pull(pr_id).merge(
             commit_title=commit_title,
             commit_message=commit_message,
@@ -66,6 +136,27 @@ class GitHubInstallationClient(InstallationClient):
             sha=sha,
         )
         logger.info(f"Merged pr {pr_id}")
+
+    def update_pull_request(
+        self,
+        repository: RepositoryIdentifier,
+        pr_id: int,
+        sha: str,
+    ):
+
+        gh = Github(self._get_installation_token())
+        repo = gh.get_repo(repository.full_name, lazy=True)
+        headers, data = repo._requester.requestJsonAndCheck(
+            "PUT",
+            f"{repo.url}/pulls/{pr_id}/update-branch",
+            headers={"Accept": "application/vnd.github.lydian-preview+json"},
+            input=dict(
+                expected_head_sha=sha,
+            ),
+        )
+
+        # todo: handle response better
+        logger.info(f"Pull request updated for {pr_id}")
 
     def add_check(
         self,

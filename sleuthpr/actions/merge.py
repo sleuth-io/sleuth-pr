@@ -10,9 +10,9 @@ from sleuthpr.models import MergeMethod
 from sleuthpr.models import PullRequest
 
 
-class MergeActionType(ActionType):
+class MergePullRequestActionType(ActionType):
     def __init__(self):
-        super().__init__("merge", "Merge the pull request", MergeActionSchema())
+        super().__init__("merge_pull_request", "Merge the pull request", MergePullRequestActionSchema())
 
     def execute(self, action: Action, context: Dict):
         pull_request: PullRequest = context["pull_request"]
@@ -26,7 +26,7 @@ class MergeActionType(ActionType):
         )
 
 
-class MergeActionSchema(Schema):
+class MergePullRequestActionSchema(Schema):
     commit_title = fields.Str(description="The commit title")
     commit_message = fields.Str(description="The commit message")
     merge_method = fields.Str(

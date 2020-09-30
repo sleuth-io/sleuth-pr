@@ -64,3 +64,12 @@ class PullRequestLabelFactory(factory.django.DjangoModelFactory):
 
     pull_request = factory.SubFactory(PullRequestFactory)
     value = factory.Sequence(lambda n: f"label-{n}")
+
+
+class PullRequestStatusFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.PullRequestStatus
+
+    pull_request = factory.SubFactory(PullRequestFactory)
+    context = "foo"
+    state = "success"

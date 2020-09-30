@@ -1,16 +1,18 @@
 import pytest
 
+from sleuthpr.models import CheckStatus
 from sleuthpr.models import PullRequest
+from sleuthpr.models import ReviewState
 from sleuthpr.services.expression import ParsedExpression
 from sleuthpr.tests.factories import PullRequestAssigneeFactory
 from sleuthpr.tests.factories import PullRequestFactory
 from sleuthpr.tests.factories import PullRequestLabelFactory
 from sleuthpr.tests.factories import PullRequestReviewerFactory
+from sleuthpr.tests.factories import PullRequestStatusFactory
 
 
 @pytest.mark.django_db
 def test_variables():
-
     pr = _get_pr()
 
     assert ParsedExpression("number_reviewers=2").execute(pull_request=pr)
@@ -28,6 +30,27 @@ def test_variables():
     assert ParsedExpression(f"mergeable=true").execute(pull_request=pr)
     assert ParsedExpression(f"merged=false and mergeable").execute(pull_request=pr)
     assert ParsedExpression(f"merged or mergeable").execute(pull_request=pr)
+
+
+@pytest.mark.django_db
+def test_statuses():
+    pr = PullRequestFactory(merged=False, mergeable=True)
+    for status in CheckStatus:
+        PullRequestStatusFactory(pull_request=pr, context=f"ctx/{status}", state=status)
+
+    for status in CheckStatus:
+        assert ParsedExpression(f"status-{status}='ctx/{status}'").execute(pull_request=pr)
+
+
+@pytest.mark.django_db
+def test_review_state():
+    pr = PullRequestFactory(merged=False, mergeable=True)
+    reviewers = {}
+    for state in ReviewState:
+        reviewers[state] = PullRequestReviewerFactory(pull_request=pr, state=state).user.username
+
+    for state in ReviewState:
+        assert ParsedExpression(f"review-{state}='{reviewers[state]}'").execute(pull_request=pr)
 
 
 def _get_pr() -> PullRequest:

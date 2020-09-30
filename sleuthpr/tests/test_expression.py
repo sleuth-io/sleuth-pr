@@ -53,6 +53,17 @@ def test_list(registry):
     assert ParsedExpression("list_var!='baz'").execute()
 
 
+def test_list_size(registry):
+    registry.add_var("list_var", lambda _: ["foo", "bar"])
+
+    assert ParsedExpression(f"list_var=2").execute()
+    assert ParsedExpression(f"list_var>1").execute()
+    assert ParsedExpression(f"list_var>=2").execute()
+    assert ParsedExpression(f"list_var<3").execute()
+    assert ParsedExpression(f"list_var<=2").execute()
+    assert ParsedExpression(f"list_var!=3").execute()
+
+
 def test_or(registry):
     assert ParsedExpression(f"var=2 or var=5").execute()
     assert not ParsedExpression(f"var=3 or var=5").execute()
@@ -68,6 +79,11 @@ def test_identifier_standalone(registry):
     assert ParsedExpression(f"var").execute()
     assert ParsedExpression(f"var and var").execute()
     assert ParsedExpression(f"var or var").execute()
+
+
+def test_identifier_with_dash(registry):
+    registry.add_var("var-bar", lambda _: True)
+    assert ParsedExpression(f"var-bar=true").execute()
 
 
 def test_bool_var(registry):
