@@ -65,7 +65,7 @@ def _make_key(condition: Condition):
 def _make_details(ctx: Dict, condition: Condition, result: bool):
     body = "Variable values:\n"
     for var in ParsedExpression(condition.expression).variables:
-        body += f"* {var.label} ({var.key}) = {var.evaluate(ctx)}"
+        body += f"* {var.label} ({var.key}) = {var(ctx)}"
     return CheckDetails(
         title=f"Rule {condition.rule.title}, Condition {condition.order}",
         summary=f"Expression: {condition.expression}",

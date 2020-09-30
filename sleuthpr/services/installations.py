@@ -13,14 +13,13 @@ def get(remote_id: str) -> Optional[Installation]:
     return Installation.objects.filter(remote_id=remote_id).filter(active=True).first()
 
 
-def delete(remote_id: str) -> bool:
-    Installation.objects.filter(remote_id=remote_id).delete()
+def delete(installation: Installation) -> bool:
+    installation.delete()
     logger.info("Deleted installation")
     return True
 
 
-def suspend(remote_id: str) -> bool:
-    installation = get(remote_id)
+def suspend(installation: Installation) -> bool:
     if installation and installation.active:
         installation.active = False
         installation.save()
@@ -30,8 +29,7 @@ def suspend(remote_id: str) -> bool:
         return False
 
 
-def unsuspend(remote_id: str) -> bool:
-    installation = get(remote_id)
+def unsuspend(installation: Installation) -> bool:
     if installation and not installation.active:
         installation.active = True
         installation.save()

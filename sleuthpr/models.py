@@ -252,7 +252,7 @@ class ConditionVariableType:
         self.default_triggers = default_triggers
         self._evaluate = evaluate
 
-    def evaluate(self, context: Dict):
+    def __call__(self, context: Dict):
         if self._evaluate:
             return self._evaluate(context)
 

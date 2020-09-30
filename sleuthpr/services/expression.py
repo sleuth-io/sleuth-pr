@@ -73,8 +73,12 @@ class AndCondition:
 class Condition:
     def __init__(self, tokens):
         self.identifier = tokens[0][0]
-        self.op = tokens[0][1]
-        self.rval = tokens[0][2]
+        if len(tokens[0]) > 1:
+            self.op = tokens[0][1]
+            self.rval = tokens[0][2]
+        else:
+            self.op = "="
+            self.rval = Boolean(["true"])
 
     def generate(self):
         return " ".join((self.identifier.generate(), self.op, self.rval.generate()))
@@ -146,7 +150,7 @@ class Identifier:
         return self.name
 
     def eval(self, context: Dict):
-        return self.variable.evaluate(context)
+        return self.variable(context)
 
     def visit(self, visitor: Callable[[Any], None]):
         visitor(self)
@@ -190,7 +194,9 @@ identifier = alphaword.setParseAction(Identifier)
 
 expr = pp.Forward()
 
-condition = pp.Group(identifier + (op + (string | number | boolean))).setParseAction(Condition)
+condition = pp.Group(identifier + pp.Optional(op + (string | number | boolean | identifier))).setParseAction(
+    Condition
+)
 
 condition = condition | (lparen + expr + rparen)
 

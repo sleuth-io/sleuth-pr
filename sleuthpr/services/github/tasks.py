@@ -23,48 +23,53 @@ logger = logging.getLogger(__name__)
 @shared_task
 def event_task(event_name: str, data: Dict, **kwargs):
     logger.info(f"GitHub action: {event_name}")
+    action = data.get("action")
     tracer.scope_manager.active.span.set_tag("event_name", event_name)
+    tracer.scope_manager.active.span.set_tag("action", action)
+
+    installation = installations.get(data.get("installation", {}).get("id"))
+    repository_id = _get_repository_id_from_data(data)
+
+    if event_name == "installation" and action == "created":
+        on_installation_created(installation, data)
+
+    if not installation:
+        logger.error(f"No installation found, skipping event {event_name}")
+        return
+
     if event_name == "installation":
-        action = data["action"]
-        remote_id = data["installation"]["id"]
-        if action == "created":
-            on_installation_created(remote_id, data)
-        elif action == "deleted":
-            installations.delete(remote_id)
+        if action == "deleted":
+            installations.delete(installation)
         elif action == "suspended":
-            installations.suspend(remote_id)
+            installations.suspend(installation)
     elif event_name == "installation_repositories":
-        action = data["action"]
-        remote_id = data["installation"]["id"]
         if action == "added":
-            on_repositories_added(remote_id, data)
+            on_repositories_added(installation, data)
         elif action == "removed":
-            on_repositories_removed(remote_id, data)
+            on_repositories_removed(installation, data)
     elif event_name == "pull_request":
-        action = data["action"]
-        repository_id = RepositoryIdentifier(data["repository"]["full_name"], remote_id=data["repository"]["id"])
-        remote_id = data["installation"]["id"]
         if action == "opened":
-            on_pr_created(remote_id, repository_id, data["pull_request"])
+            on_pr_created(installation, repository_id, data["pull_request"])
         elif action == "synchronize":
-            on_pr_updated(remote_id, repository_id, data["pull_request"])
+            on_pr_updated(installation, repository_id, data["pull_request"])
         elif action == "closed":
-            on_pr_closed(remote_id, repository_id, data["pull_request"])
+            on_pr_closed(installation, repository_id, data["pull_request"])
     elif event_name == "push":
-        repository_id = RepositoryIdentifier(data["repository"]["full_name"], remote_id=data["repository"]["id"])
-        remote_id = data["installation"]["id"]
-        on_push(remote_id, repository_id, data)
+        on_push(installation, repository_id, data)
     elif event_name == "check_suite":
-        action = data["action"]
-        repository_id = RepositoryIdentifier(data["repository"]["full_name"], remote_id=data["repository"]["id"])
-        remote_id = data["installation"]["id"]
         if action == "requested":
-            on_check_suite_requested(remote_id, repository_id, data["check_suite"])
+            on_check_suite_requested(installation, repository_id, data["check_suite"])
     elif event_name == "check_run":
         app_id = data["check_run"]["check_suite"]["app"]["id"]
         if app_id != settings.GITHUB_APP_ID:
-            repository_id = RepositoryIdentifier(data["repository"]["full_name"], remote_id=data["repository"]["id"])
-            remote_id = data["installation"]["id"]
-            on_check_run(remote_id, repository_id, data["check_run"])
+            on_check_run(installation, repository_id, data["check_run"])
     else:
-        logger.info(f"Ignored event {event_name}")
+        logger.info(f"Ignored event {event_name}, action {action}")
+
+
+def _get_repository_id_from_data(data):
+    if "repository" in data:
+        repository_id = RepositoryIdentifier(data["repository"]["full_name"], remote_id=data["repository"]["id"])
+    else:
+        repository_id = None
+    return repository_id

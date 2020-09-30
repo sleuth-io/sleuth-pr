@@ -24,8 +24,10 @@ def test_variables():
     assert ParsedExpression(f"label!='blah'").execute(pull_request=pr)
 
     assert ParsedExpression(f"merged=false").execute(pull_request=pr)
+    assert ParsedExpression(f"mergeable").execute(pull_request=pr)
     assert ParsedExpression(f"mergeable=true").execute(pull_request=pr)
-    assert not ParsedExpression(f"merged=false and mergeable=false").execute(pull_request=pr)
+    assert ParsedExpression(f"merged=false and mergeable").execute(pull_request=pr)
+    assert ParsedExpression(f"merged or mergeable").execute(pull_request=pr)
 
 
 def _get_pr() -> PullRequest:
