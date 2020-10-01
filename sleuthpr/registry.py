@@ -1,5 +1,6 @@
 import logging
 from importlib import import_module
+from typing import List
 
 from django.apps import apps
 
@@ -44,6 +45,21 @@ def _init():
         logger.info(f"Loading action_types from {name}")
         for value in values:
             _action_types[value.key] = value
+
+
+def get_all_condition_variable_types() -> List[ConditionVariableType]:
+    _init()
+    return list(_condition_variable_types.values())
+
+
+def get_all_trigger_types() -> List[TriggerType]:
+    _init()
+    return list(_trigger_types.values())
+
+
+def get_all_action_types() -> List[ActionType]:
+    _init()
+    return list(_action_types.values())
 
 
 def get_condition_variable_type(key: str) -> ConditionVariableType:
