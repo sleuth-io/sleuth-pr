@@ -18,7 +18,7 @@ def on_event(request):
 
     body = request.body.decode()
     data = json.loads(body)
-    logger.info(f"event: {event_name} body: {body}")
+    logger.debug(f"event: {event_name}")
 
     event_task.delay(event_name, data)
 

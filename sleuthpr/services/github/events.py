@@ -23,6 +23,7 @@ from sleuthpr.services import installations
 from sleuthpr.services import pull_requests
 from sleuthpr.services import repositories
 from sleuthpr.services import rules
+from sleuthpr.services.scm import Commit
 from sleuthpr.triggers import PR_CLOSED
 from sleuthpr.triggers import PR_CREATED
 from sleuthpr.triggers import PR_UPDATED
@@ -62,6 +63,9 @@ def on_check_run(installation: Installation, repository: Repository, data: Dict)
 
 
 def on_push(installation: Installation, repository: Repository, data: Dict):
+    pull_requests.add_commits(
+        repository, [Commit(sha=c.get("id", c.get("sha")), message=c["message"], parents=[]) for c in data["commits"]]
+    )
     if "refs/heads/master" == data["ref"]:
         files = {}
         for commit in data["commits"]:
@@ -85,11 +89,13 @@ def on_push(installation: Installation, repository: Repository, data: Dict):
 
 
 def on_pr_created(installation: Installation, repository: Repository, pr_data: Dict):
-    _update_pull_request_and_process(installation, repository, pr_data, event=PR_CREATED)
+    pr = _update_pull_request_and_process(installation, repository, pr_data, event=PR_CREATED)
+    pull_requests.refresh_commits(installation, repository, pr)
 
 
 def on_pr_updated(installation: Installation, repository: Repository, pr_data: Dict):
-    _update_pull_request_and_process(installation, repository, pr_data)
+    pr = _update_pull_request_and_process(installation, repository, pr_data)
+    pull_requests.refresh_commits(installation, repository, pr)
 
 
 def on_pr_closed(installation: Installation, repository: Repository, pr_data: Dict):

@@ -25,6 +25,13 @@ class CheckDetails:
     success: bool
 
 
+@dataclass
+class Commit:
+    sha: str
+    message: str
+    parents: List[str]
+
+
 def get_client(installation: Installation):
     if installation.provider == "github":
         from sleuthpr.services.github import GitHubInstallationClient
@@ -95,4 +102,11 @@ class InstallationClient:
         sha: str,
         message: str,
     ):
+        pass
+
+    def get_pull_request_commits(
+        self,
+        repository: RepositoryIdentifier,
+        pr_id: int,
+    ) -> List[Commit]:
         pass

@@ -9,6 +9,10 @@ from sleuthpr.tests.factories import PullRequestFactory
 from sleuthpr.tests.factories import PullRequestLabelFactory
 from sleuthpr.tests.factories import PullRequestReviewerFactory
 from sleuthpr.tests.factories import PullRequestStatusFactory
+from sleuthpr.tests.factories import RepositoryBranchFactory
+from sleuthpr.tests.factories import RepositoryCommitFactory
+from sleuthpr.tests.factories import RepositoryCommitParentFactory
+from sleuthpr.tests.factories import RepositoryFactory
 
 
 @pytest.mark.django_db
@@ -40,6 +44,18 @@ def test_statuses():
 
     for status in CheckStatus:
         assert ParsedExpression(f"status-{status}='ctx/{status}'").execute(pull_request=pr)
+
+
+@pytest.mark.django_db
+def test_base_synced():
+    repo = RepositoryFactory()
+    pr = PullRequestFactory(repository=repo, merged=False, mergeable=True)
+    RepositoryBranchFactory(repository=repo, head_sha="master-head")
+    master_head = RepositoryCommitFactory(repository=repo, sha="master-head")
+    pr_head = RepositoryCommitFactory(repository=repo, sha="pr-head", pull_request=pr)
+    RepositoryCommitParentFactory(repository=repo, child=pr_head, parent=master_head)
+
+    assert ParsedExpression(f"base_synced").execute(pull_request=pr)
 
 
 @pytest.mark.django_db

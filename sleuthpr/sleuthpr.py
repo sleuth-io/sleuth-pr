@@ -8,6 +8,7 @@ from sleuthpr.triggers import PR_UPDATED
 from sleuthpr.triggers import REVIEW_UPDATED
 from sleuthpr.triggers import STATUS_UPDATED
 from sleuthpr.variables import ASSIGNEE
+from sleuthpr.variables import BASE_SYNCED
 from sleuthpr.variables import LABEL
 from sleuthpr.variables import MERGEABLE
 from sleuthpr.variables import MERGED
@@ -27,6 +28,7 @@ condition_variable_types = [
     LABEL,
     MERGED,
     MERGEABLE,
+    BASE_SYNCED,
     *STATUS_STATE_VARS,
     *REVIEW_STATE_VARS,
 ]

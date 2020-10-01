@@ -243,6 +243,49 @@ class PullRequestStatus(models.Model):
     )
 
 
+class RepositoryCommit(models.Model):
+    sha = models.CharField(max_length=1024, verbose_name=_("sha"), db_index=True)
+    message = models.TextField(max_length=16384, null=True, blank=True, verbose_name=_("message"))
+    repository = models.ForeignKey(
+        Repository,
+        on_delete=CASCADE,
+        related_name="commits",
+        verbose_name=_("repository"),
+    )
+
+    pull_request = models.ForeignKey(
+        PullRequest,
+        related_name="commits",
+        verbose_name=_("pull_request"),
+        null=True,
+        on_delete=SET_NULL,
+    )
+    # fixme: this should be the commit date
+    on = models.DateTimeField(default=now, verbose_name=_("created on"), db_index=True)
+
+
+class RepositoryCommitParent(models.Model):
+    repository = models.ForeignKey(
+        Repository,
+        on_delete=CASCADE,
+        related_name="commit_tree",
+        verbose_name=_("repository"),
+    )
+
+    parent = models.ForeignKey(
+        RepositoryCommit,
+        on_delete=CASCADE,
+        related_name="children",
+        verbose_name=_("parent"),
+    )
+    child = models.ForeignKey(
+        RepositoryCommit,
+        on_delete=CASCADE,
+        related_name="parents",
+        verbose_name=_("child"),
+    )
+
+
 class Rule(models.Model):
     title = models.CharField(default="", max_length=255, verbose_name=_("title"), db_index=True)
     description = models.TextField(max_length=16384, blank=True, verbose_name=_("description"))

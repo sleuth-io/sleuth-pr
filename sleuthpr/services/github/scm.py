@@ -21,6 +21,7 @@ from sleuthpr.models import Repository
 from sleuthpr.models import RepositoryIdentifier
 from sleuthpr.services.github.events import _update_pull_request
 from sleuthpr.services.scm import CheckDetails
+from sleuthpr.services.scm import Commit
 from sleuthpr.services.scm import InstallationClient
 
 logger = logging.getLogger(__name__)
@@ -54,9 +55,32 @@ class GitHubInstallationClient(InstallationClient):
             repo.url + "/pulls",
             dict(state="open"),
         ):  # type: PullRequest
-            logger.info(f"Loaded PR {pr.remote_id}")
             result.append(pr)
 
+        logger.info(f"Loaded {len(result)} pull requests")
+        return result
+
+    def get_pull_request_commits(
+        self,
+        repository: RepositoryIdentifier,
+        pr_id: int,
+    ) -> List[Commit]:
+
+        gh = Github(self._get_installation_token())
+        repo = gh.get_repo(repository.full_name, lazy=True)
+
+        def _new_commit(_, __, data, *args, **kwargs):
+            return Commit(
+                sha=data["sha"], message=data["commit"]["message"], parents=[p["sha"] for p in data["parents"]]
+            )
+
+        result = []
+        for commit in PaginatedList(
+            _new_commit, repo._requester, f"{repo.url}/pulls/{pr_id}/commits", {"per_page": 100}
+        ):  # type: Commit
+            result.append(commit)
+
+        logger.info(f"Loaded {len(result)} commits")
         return result
 
     def comment_on_pull_request(

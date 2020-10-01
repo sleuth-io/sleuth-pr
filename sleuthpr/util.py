@@ -14,7 +14,7 @@ def dirty_set_all(target: Any, attributes: Dict[str, Any]) -> bool:
         old_value = getattr(target, key)
         if old_value != value:
             setattr(target, key, value)
-            logger.info(f"DIRTY!!!!! {key} old {old_value} new {value}")
+            logger.info(f"DIRTY!!!!! {target} - {key} old {old_value} new {value}")
             dirty = True
 
     return dirty

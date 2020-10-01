@@ -21,6 +21,34 @@ class RepositoryFactory(factory.django.DjangoModelFactory):
     full_name = factory.Sequence(lambda n: f"repo/repo-{n}")
 
 
+class RepositoryBranchFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.RepositoryBranch
+
+    repository = factory.SubFactory(RepositoryFactory)
+    name = "master"
+    head_sha = factory.Sequence(lambda n: f"head-{n}")
+
+
+class RepositoryCommitFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.RepositoryCommit
+
+    repository = factory.SubFactory(RepositoryFactory)
+    sha = factory.Sequence(lambda n: f"sha-{n}")
+    message = factory.Sequence(lambda n: f"Commit message {n}")
+    pull_request = None
+
+
+class RepositoryCommitParentFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.RepositoryCommitParent
+
+    repository = factory.SubFactory(RepositoryFactory)
+    child = factory.SubFactory(RepositoryCommitFactory)
+    parent = factory.SubFactory(RepositoryCommitFactory)
+
+
 class ExternalUserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = models.ExternalUser

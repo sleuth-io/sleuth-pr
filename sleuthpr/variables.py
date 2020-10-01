@@ -3,6 +3,7 @@ from typing import List
 
 from sleuthpr.models import CheckStatus
 from sleuthpr.models import ConditionVariableType
+from sleuthpr.models import PullRequest
 from sleuthpr.models import ReviewState
 from sleuthpr.triggers import PR_CLOSED
 from sleuthpr.triggers import PR_CREATED
@@ -64,6 +65,22 @@ MERGED = ConditionVariableType(
     type=bool,
     default_triggers=[PR_CLOSED],
     evaluate=lambda context: context["pull_request"].merged,
+)
+
+
+def _is_base_branch_synchronized(pull_request: PullRequest):
+    repo = pull_request.repository
+
+    branch_head = repo.branches.filter(name=pull_request.base_branch_name).first()
+    return repo.commit_tree.filter(child__pull_request=pull_request, parent__sha=branch_head.head_sha).exists()
+
+
+BASE_SYNCED = ConditionVariableType(
+    key="base_synced",
+    label="Base branch synchronized",
+    type=bool,
+    default_triggers=[PR_CREATED, PR_UPDATED],
+    evaluate=lambda context: _is_base_branch_synchronized(context["pull_request"]),
 )
 
 
