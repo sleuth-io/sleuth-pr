@@ -20,5 +20,5 @@ ENV DJANGO_SETTINGS_MODULE="app.settings.github_action"
 EXPOSE 8125/udp
 EXPOSE 8080/tcp
 
-CMD ["python", "/app/run-github-action.sh"]
+CMD ["/app/run-github-action.sh"]
 
