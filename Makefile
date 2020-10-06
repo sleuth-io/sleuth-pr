@@ -1,4 +1,4 @@
-.PHONY: help rebuild-index lint format lint-py lint-js format-py format-js check-format-py format
+.PHONY: help rebuild-index lint format lint-py lint-js format-py format-js check-format-py format docs
 
 # Help system from https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 .DEFAULT_GOAL := help
@@ -18,8 +18,9 @@ else
 	timeout --foreground --preserve-status 60m ngrok http -hostname=pr-dev.ngrok.io 8000
 endif
 
-up: ## Start the application for development
+up: docs ## Start the application for development
 	bin/run-web-dev.sh
+
 
 lint: ## Run Python linters
 	flake8 app
@@ -33,6 +34,8 @@ check-format: lint ## Check Python code formatting
 	reorder-python-imports --py38-plus `find sleuthpr -name "*.py"`
 	reorder-python-imports --py38-plus `find app -name "*.py"`
 
+docs: ## Serve the docs
+	mkdocs serve -a localhost:8035
 
 format: ## Format Python code
 	black app --target-version py38

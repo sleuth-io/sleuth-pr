@@ -2,3 +2,5 @@ config/dev
 db.sqlite3
 .eggs
 build/
+site/
+pip-wheel-metadata/
