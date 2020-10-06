@@ -37,6 +37,10 @@ check-format: lint ## Check Python code formatting
 docs: ## Serve the docs
 	mkdocs serve -a localhost:8035
 
+
+build: ## Build the docker container
+	docker build -t sleuthpr-dev --build-arg VERSION=`python setup.py --version` .
+
 format: ## Format Python code
 	black app --target-version py38
 	black sleuthpr --target-version py38

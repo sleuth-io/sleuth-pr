@@ -29,9 +29,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "not-a-secret"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ["pr-dev.ngrok.io"]
+ALLOWED_HOSTS = []
+
+ENVIRONMENT = "prod"
 
 # Application definition
 
@@ -138,7 +140,7 @@ LOGGING = {
     },
     "root": {
         "handlers": ["console"],
-        "level": "DEBUG",
+        "level": "INFO",
     },
     "formatters": {
         "simple": {
@@ -152,8 +154,6 @@ LOGGING = {
         },
     },
 }
-
-CELERY_TASK_ALWAYS_EAGER = True
 
 GITHUB_APP_ID = os.getenv("GITHUB_APP_ID")
 
