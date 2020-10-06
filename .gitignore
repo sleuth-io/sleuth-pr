@@ -1,4 +1,4 @@
-config/dev
+config/dev/env
 db.sqlite3
 .eggs
 build/
