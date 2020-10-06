@@ -27,6 +27,11 @@ Release Guide
 - Tag as vMAJOR.MINOR.PATCH (either via the CLI or GitHub UI)
 - Sit back and relax by watching some [Sleuth TV](https://www.youtube.com/channel/UCmIIOHKgJnGQruIVD_Zx71g)
 
+Documentation
+-------------
+
+sleuth-pr.readthedocs.io
+
 Contributors
 ------------
 
