@@ -6,4 +6,4 @@ jobs:
   sleuthpr-test:
     runs-on: ubuntu-latest
     steps:
-    - uses: docker://mrdonbrown/sleuth-pr-dev:0.0.8
+    - uses: docker://mrdonbrown/sleuth-pr-dev:0.0.9
