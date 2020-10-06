@@ -31,7 +31,7 @@ class Command(BaseCommand):
             target_type="github_action",
             target_id="1",
             repository_ids=repos,
-            provider="github",
+            provider="github_action",
         )
 
         logger.info(f"Environment: {settings.ENVIRONMENT}")

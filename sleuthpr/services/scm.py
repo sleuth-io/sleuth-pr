@@ -37,6 +37,10 @@ def get_client(installation: Installation):
         from sleuthpr.services.github import GitHubInstallationClient
 
         return GitHubInstallationClient(installation)
+    elif installation.provider == "github_action":
+        from sleuthpr.services.github import GitHubActionInstallationClient
+
+        return GitHubActionInstallationClient(installation)
     else:
         raise ValueError(f"Unsupported provider: {installation.provider}")
 

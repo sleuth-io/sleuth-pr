@@ -7,6 +7,7 @@ from typing import Tuple
 
 import jwt
 import requests
+from django.conf import settings
 from django.core.cache import cache
 from django.utils.timezone import now
 from github import Github
@@ -234,6 +235,11 @@ class GitHubInstallationClient(InstallationClient):
             else:
                 logger.error(f"Unable to get token: {resp.text}")
         return token
+
+
+class GitHubActionInstallationClient(GitHubInstallationClient):
+    def _get_installation_token(self):
+        return settings.GITHUB_TOKEN
 
 
 def _gen_jwt():
