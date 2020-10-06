@@ -6,6 +6,7 @@ from celery import shared_task
 from django.conf import settings
 from opentracing import tracer
 
+from sleuthpr.models import Installation
 from sleuthpr.models import Repository
 from sleuthpr.models import RepositoryIdentifier
 from sleuthpr.services import installations
@@ -26,14 +27,18 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task
-def event_task(event_name: str, data: Dict, **_):
+def event_task(event_name: str, data: Dict, installation: Optional[Installation] = None, **_):
     logger.info(f"GitHub action: {event_name}")
     action = data.get("action")
     tracer.scope_manager.active.span.set_tag("event_name", event_name)
     tracer.scope_manager.active.span.set_tag("action", action)
 
-    installation_id = data.get("installation", {}).get("id")
-    installation = installations.get(installation_id)
+    if not installation:
+        installation_id = data.get("installation", {}).get("id")
+        installation = installations.get(installation_id)
+    else:
+        installation_id = installation.id
+
     repository = _get_repository(installation, data)
 
     if event_name == "installation" and action == "created":
