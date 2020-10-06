@@ -19,5 +19,5 @@ ENV DJANGO_SETTINGS_MODULE="app.settings.github_action"
 EXPOSE 8125/udp
 EXPOSE 8080/tcp
 
-CMD ["python", "manage.py", "on_github_action"]
+CMD ["python", "/app/manage.py", "on_github_action"]
 
