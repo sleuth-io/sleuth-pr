@@ -1,3 +1,4 @@
+# pylint: disable=wildcard-import
 from .base import *  # noqa
 
 ENVIRONMENT = "dev"
@@ -8,4 +9,4 @@ ALLOWED_HOSTS = ["pr-dev.ngrok.io"]
 
 CELERY_TASK_ALWAYS_EAGER = True
 
-LOGGING["root"]["level"] = "DEBUG"
+LOGGING["root"]["level"] = "DEBUG"  # noqa

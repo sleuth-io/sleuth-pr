@@ -3,15 +3,13 @@ import logging
 import os
 
 from django.conf import settings
-from django.core.management.base import BaseCommand, CommandError
-from sleuthpr.services.github.tasks import event_task
-
+from django.core.management.base import BaseCommand
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Process a github action'
+    help = "Process a github action"
 
     def add_arguments(self, parser):
         pass
