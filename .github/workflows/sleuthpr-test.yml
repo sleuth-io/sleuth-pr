@@ -1,0 +1,9 @@
+name: Sleuth PR tests
+
+on: [push, pull_request, pull_request_review, check_run]
+
+jobs:
+  sleuthpr-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: mrdon/sleuth-pr-dev
