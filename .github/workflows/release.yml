@@ -61,5 +61,5 @@ jobs:
       - name: Build and publish
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_API_TOKEN }}
+          DOCKERHUB_API_KEY: ${{ secrets.DOCKERHUB_API_KEY }}
         run: bin/release-dockerhub.sh
