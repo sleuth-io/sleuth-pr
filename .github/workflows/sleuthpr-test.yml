@@ -6,4 +6,4 @@ jobs:
   sleuthpr-test:
     runs-on: ubuntu-latest
     steps:
-    - uses: mrdon/sleuth-pr-dev
+    - uses: mrdon/sleuth-pr-dev@0.0.6
