@@ -10,7 +10,8 @@ import requests
 from django.conf import settings
 from django.core.cache import cache
 from django.utils.timezone import now
-from github import Github, GithubException
+from github import Github
+from github import GithubException
 from github import UnknownObjectException
 from github.PaginatedList import PaginatedList
 
@@ -21,9 +22,10 @@ from sleuthpr.models import PullRequest
 from sleuthpr.models import Repository
 from sleuthpr.models import RepositoryIdentifier
 from sleuthpr.services.github.events import _update_pull_request
-from sleuthpr.services.scm import CheckDetails, OperationException
+from sleuthpr.services.scm import CheckDetails
 from sleuthpr.services.scm import Commit
 from sleuthpr.services.scm import InstallationClient
+from sleuthpr.services.scm import OperationException
 
 logger = logging.getLogger(__name__)
 
@@ -218,11 +220,11 @@ class GitHubInstallationClient(InstallationClient):
 
     def update_check(
         self,
-            repository: RepositoryIdentifier,
-            key: str,
-            source_sha: str,
-            details: CheckDetails,
-            remote_check_id: str,
+        repository: RepositoryIdentifier,
+        key: str,
+        source_sha: str,
+        details: CheckDetails,
+        remote_check_id: str,
     ):
         gh = Github(self._get_installation_token())
         repo = gh.get_repo(repository.full_name, lazy=True)

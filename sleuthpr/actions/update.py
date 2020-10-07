@@ -27,7 +27,9 @@ class UpdatePullRequestBaseActionType(ActionType):
             )
             message = f"Updated the pull request by merging master as requested by rule {action.rule.title}"
         except OperationException as ex:
-            message = f"Unable to update pull request by merging master as requested by rule {action.rule.title}: {ex}"
+            message = (
+                f"Unable to update pull request by merging master as requested by rule {action.rule.title}: {ex}"
+            )
 
         action.rule.repository.installation.client.comment_on_pull_request(
             pull_request.repository.identifier,

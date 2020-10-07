@@ -1,17 +1,19 @@
 import logging
-from typing import Dict, Any
+from typing import Dict
 
 from django.utils.text import slugify
 
-from sleuthpr.models import CheckStatus, Rule, RuleCheckRun, ConditionVariableType
+from sleuthpr.models import CheckStatus
+from sleuthpr.models import ConditionVariableType
 from sleuthpr.models import Installation
 from sleuthpr.models import PullRequest
 from sleuthpr.models import Repository
+from sleuthpr.models import Rule
+from sleuthpr.models import RuleCheckRun
 from sleuthpr.services import rules
 from sleuthpr.services.expression import ParsedExpression
 from sleuthpr.services.rules import EvaluatedRule
 from sleuthpr.services.scm import CheckDetails
-
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +26,7 @@ def clear_checks(pull_request: PullRequest):
 def update_checks(installation: Installation, repository: Repository, pull_request: PullRequest):
     ctx = {"pull_request": pull_request}
 
-    existing_checks: Dict = {
-        run.rule.id: run for run in RuleCheckRun.objects.filter(pull_request=pull_request).all()
-    }
+    existing_checks: Dict = {run.rule.id: run for run in RuleCheckRun.objects.filter(pull_request=pull_request).all()}
 
     for rule in rules.evaluate_rules(repository, ctx):
         eval_as_status = CheckStatus.SUCCESS if rule.evaluation else CheckStatus.FAILURE
