@@ -18,6 +18,7 @@ Quickstart Guide
 ----------------
 
 - python3.8 -m venv venv && source venv/bin/activate
+- cp config/dev/env.template config/dev/env # and edit with the correct values
 - pip install -r requirements.txt
 - make run
 
