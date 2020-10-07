@@ -143,12 +143,11 @@ def on_installation_created(remote_id: str, data):
 def _update_pull_request_and_process(
     installation: Installation, repository: Repository, data: Dict, event=PR_UPDATED
 ):
-    pr, was_changed = _update_pull_request(installation, repository, data)
-    if was_changed:
-        if event == PR_CREATED:
-            pull_requests.on_created(installation, repository, pr)
-        else:
-            pull_requests.on_updated(installation, repository, pr)
+    pr, _ = _update_pull_request(installation, repository, data)
+    if event == PR_CREATED:
+        pull_requests.on_created(installation, repository, pr)
+    else:
+        pull_requests.on_updated(installation, repository, pr)
     return pr
 
 

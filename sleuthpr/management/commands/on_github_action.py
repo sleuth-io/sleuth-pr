@@ -25,7 +25,7 @@ class Command(BaseCommand):
         event_path = os.environ["GITHUB_EVENT_PATH"]
         event_data = json.load(open(event_path))
 
-        with tracer.start_active_span('action', finish_on_close=True):
+        with tracer.start_active_span("action", finish_on_close=True):
             repo = event_data["repository"]
             repos = [RepositoryIdentifier(full_name=repo["full_name"], remote_id=repo["id"])]
             installation = installations.create(

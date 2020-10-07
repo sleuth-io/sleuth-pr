@@ -66,6 +66,8 @@ def event_task(event_name: str, data: Dict, installation: Optional[Installation]
             on_pr_updated(installation, repository, data["pull_request"])
         elif action == "closed":
             on_pr_closed(installation, repository, data["pull_request"])
+        else:
+            logger.info(f"Unhandled subevent: {action}")
     elif event_name == "push":
         on_push(installation, repository, data)
     elif event_name == "check_suite":
