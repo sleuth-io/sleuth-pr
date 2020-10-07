@@ -1,0 +1,32 @@
+rules:
+  - label-no-reviewers:
+      description: "Label pull requests with no reviewers"
+      conditions:
+        - description: "Number of reviewers is zero"
+          expression: "number_reviewers=0"
+      actions:
+        - add_pull_request_label: "no-reviewers"
+
+  - update_if_dirty:
+      description: "Update pull requests if their base branch changes"
+      triggers:
+        - base_branch_updated
+      actions:
+        - update_pull_request_base
+
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
