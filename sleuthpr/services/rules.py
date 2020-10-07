@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict
 from typing import List
@@ -49,8 +50,12 @@ def refresh_from_data(repository: Repository, data: str) -> List[Rule]:
         conditions: List[Condition] = []
         conditions_data = rule_data.get("conditions", [])
         for condition_data in conditions_data:
-            description = condition_data.get("description", "")
-            expression = condition_data.get("expression")
+            if isinstance(condition_data, str):
+                expression = condition_data
+                description = ""
+            else:
+                description = condition_data.get("description", "")
+                expression = condition_data.get("expression")
             condition = Condition.objects.create(
                 rule=rule,
                 description=description,
@@ -116,13 +121,23 @@ class EvaluatedCondition:
     evaluation: bool
 
 
-def evaluate_conditions(repository: Repository, context: Dict) -> List[EvaluatedCondition]:
+class EvaluatedRule:
+    def __init__(self, rule: Rule, conditions: List[EvaluatedCondition]):
+        self.conditions = conditions
+        self.rule = rule
+        self.id = rule.id
+        self.evaluation = all(c.evaluation for c in conditions)
+
+
+def evaluate_rules(repository: Repository, context: Dict) -> List[EvaluatedRule]:
     result = []
     for rule in repository.ordered_rules:
         logger.info(f"Evaluating rule {rule.id}")
+        conditions: List[EvaluatedCondition] = []
         for condition in rule.ordered_conditions:
             expression = ParsedExpression(condition.expression)
-            result.append(EvaluatedCondition(condition=condition, evaluation=expression.execute(**context)))
+            conditions.append(EvaluatedCondition(condition=condition, evaluation=expression.execute(**context)))
+        result.append(EvaluatedRule(rule, conditions))
     return result
 
 
@@ -133,7 +148,7 @@ def evaluate(repository: Repository, trigger_type: TriggerType, context: Dict):
 
 
 def _evaluate_rule(rule: Rule, context: Dict):
-    logger.info(f"Evaluating rule {rule.id}")
+    logger.info(f"Evaluating rule {rule.id} - {rule.title}")
     conditions_ok = True
     for condition in rule.ordered_conditions:
         expression = ParsedExpression(condition.expression)

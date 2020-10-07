@@ -10,7 +10,7 @@ import requests
 from django.conf import settings
 from django.core.cache import cache
 from django.utils.timezone import now
-from github import Github
+from github import Github, GithubException
 from github import UnknownObjectException
 from github.PaginatedList import PaginatedList
 
@@ -21,7 +21,7 @@ from sleuthpr.models import PullRequest
 from sleuthpr.models import Repository
 from sleuthpr.models import RepositoryIdentifier
 from sleuthpr.services.github.events import _update_pull_request
-from sleuthpr.services.scm import CheckDetails
+from sleuthpr.services.scm import CheckDetails, OperationException
 from sleuthpr.services.scm import Commit
 from sleuthpr.services.scm import InstallationClient
 
@@ -60,6 +60,9 @@ class GitHubInstallationClient(InstallationClient):
 
         logger.info(f"Loaded {len(result)} pull requests")
         return result
+
+    def get_source_url(self, repository: RepositoryIdentifier, path: str) -> str:
+        return f"https://github.com/{repository.full_name}/tree/master/{path}"
 
     def get_pull_request_commits(
         self,
@@ -171,14 +174,17 @@ class GitHubInstallationClient(InstallationClient):
 
         gh = Github(self._get_installation_token())
         repo = gh.get_repo(repository.full_name, lazy=True)
-        headers, data = repo._requester.requestJsonAndCheck(
-            "PUT",
-            f"{repo.url}/pulls/{pr_id}/update-branch",
-            headers={"Accept": "application/vnd.github.lydian-preview+json"},
-            input=dict(
-                expected_head_sha=sha,
-            ),
-        )
+        try:
+            headers, data = repo._requester.requestJsonAndCheck(
+                "PUT",
+                f"{repo.url}/pulls/{pr_id}/update-branch",
+                headers={"Accept": "application/vnd.github.lydian-preview+json"},
+                input=dict(
+                    expected_head_sha=sha,
+                ),
+            )
+        except GithubException as ex:
+            raise OperationException(ex.data.get("message"))
 
         # todo: handle response better
         logger.info(f"Pull request updated for {pr_id}")
@@ -195,16 +201,44 @@ class GitHubInstallationClient(InstallationClient):
         headers, data = repo._requester.requestJsonAndCheck(
             "POST",
             repo.url + "/check-runs",
-            headers={"Accept": "application/vnd.github.antiope-preview+json"},
+            headers={"Accept": "application/vnd.github.v3+json"},
             input=dict(
                 head_sha=source_sha,
                 name=key,
                 output=dict(title=details.title, summary=details.summary, text=details.body),
                 status="completed",
-                conclusion="success" if details.success else "failure",
+                conclusion="success" if details.success else "neutral",
             ),
         )
         logger.info(f"Status check on {source_sha} created for {key}: {details.success}")
+        # todo: check response?
+        # for pr_data in data["pull_requests"]:
+        #     _update_pull_request(repo.installation, repo, pr_data)
+        return data["id"]
+
+    def update_check(
+        self,
+            repository: RepositoryIdentifier,
+            key: str,
+            source_sha: str,
+            details: CheckDetails,
+            remote_check_id: str,
+    ):
+        gh = Github(self._get_installation_token())
+        repo = gh.get_repo(repository.full_name, lazy=True)
+        headers, data = repo._requester.requestJsonAndCheck(
+            "PATCH",
+            repo.url + f"/check-runs/{remote_check_id}",
+            headers={"Accept": "application/vnd.github.v3+json"},
+            input=dict(
+                head_sha=source_sha,
+                name=key,
+                output=dict(title=details.title, summary=details.summary, text=details.body),
+                status="completed",
+                conclusion="success" if details.success else "neutral",
+            ),
+        )
+        logger.info(f"Status check on {source_sha} updated for {key}: {details.success}")
         # todo: check response?
         # for pr_data in data["pull_requests"]:
         #     _update_pull_request(repo.installation, repo, pr_data)

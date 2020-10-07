@@ -107,6 +107,9 @@ class Repository(models.Model):
     def ordered_rules(self):
         return self.rules.order_by("order").all()
 
+    def source_url(self, path: str):
+        return self.installation.client.get_source_url(self.identifier, path)
+
 
 class ExternalUser(models.Model):
     name = models.CharField(max_length=512, verbose_name=_("name"), null=True, db_index=True)
@@ -302,6 +305,10 @@ class Rule(models.Model):
     def ordered_conditions(self):
         return self.conditions.order_by("order").all()
 
+    @property
+    def ordered_actions(self):
+        return self.actions.order_by("order").all()
+
 
 class TriggerType:
     def __init__(self, key: str, label: str):
@@ -369,11 +376,11 @@ class Condition(models.Model):
     order = models.IntegerField()
 
 
-class ConditionCheckRun(models.Model):
-    condition = models.ForeignKey(
-        Condition,
+class RuleCheckRun(models.Model):
+    rule = models.ForeignKey(
+        Rule,
         related_name="checks",
-        verbose_name=_("condition"),
+        verbose_name=_("rule"),
         null=True,
         on_delete=CASCADE,
     )

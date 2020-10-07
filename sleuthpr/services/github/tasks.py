@@ -75,7 +75,7 @@ def event_task(event_name: str, data: Dict, installation: Optional[Installation]
             on_check_suite_requested(installation, repository, data["check_suite"])
     elif event_name == "check_run":
         app_id = data["check_run"]["check_suite"]["app"]["id"]
-        if app_id != settings.GITHUB_APP_ID:
+        if str(app_id) != settings.GITHUB_APP_ID:
             on_check_run(installation, repository, data["check_run"])
     elif event_name == "status":
         on_status(installation, repository, data)

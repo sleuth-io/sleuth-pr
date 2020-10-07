@@ -87,3 +87,22 @@ rules:
 
     assert 1 == len(rule.triggers.all())
     assert {"update_pull_request_base"} == set(t.type for t in rule.actions.all())
+
+
+@pytest.mark.django_db
+def test_simple():
+
+    data = """
+rules:
+  - ensure-lots-of-reviewers:
+      conditions:
+        - number_reviewers=0
+      actions:
+        - update_pull_request_base
+"""
+    repository = RepositoryFactory()
+    rule = refresh_from_data(repository, data)[0]
+
+    assert 2 == len(rule.triggers.all())
+    assert 1 == len(rule.conditions.all())
+    assert {"update_pull_request_base"} == set(t.type for t in rule.actions.all())

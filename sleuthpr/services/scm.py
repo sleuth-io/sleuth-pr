@@ -45,6 +45,10 @@ def get_client(installation: Installation):
         raise ValueError(f"Unsupported provider: {installation.provider}")
 
 
+class OperationException(Exception):
+    pass
+
+
 class InstallationClient:
     def get_repositories(self) -> List[RepositoryIdentifier]:
         pass
@@ -113,4 +117,7 @@ class InstallationClient:
         repository: RepositoryIdentifier,
         pr_id: int,
     ) -> List[Commit]:
+        pass
+
+    def get_source_url(self, repository: RepositoryIdentifier, path: str) -> str:
         pass
