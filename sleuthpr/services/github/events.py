@@ -70,7 +70,7 @@ def on_push(installation: Installation, repository: Repository, data: Dict):
         files = {}
         for commit in data["commits"]:
             for action in ("modified", "added", "removed"):
-                for file in commit[action]:
+                for file in commit.get(action, []):
                     files[file] = action
 
         if files.get(".sleuth/rules.yml"):
