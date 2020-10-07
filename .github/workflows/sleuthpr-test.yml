@@ -1,4 +1,4 @@
-name: Sleuth PR tests
+name: Automations
 
 on: [push, pull_request, pull_request_review, check_run]
 
@@ -6,6 +6,6 @@ jobs:
   sleuthpr-test:
     runs-on: ubuntu-latest
     steps:
-    - uses: docker://mrdonbrown/sleuth-pr-dev:0.0.14
+    - uses: docker://mrdonbrown/sleuth-pr-dev:0.0.15
       env:
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

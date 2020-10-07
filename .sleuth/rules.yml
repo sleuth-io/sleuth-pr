@@ -1,11 +1,11 @@
 rules:
-  - label-no-reviewers:
-      description: "Label pull requests with no reviewers"
+  - auto-merge:
+      description: "Automerge any up to date pull requests"
       conditions:
-        - description: "Number of reviewers is zero"
-          expression: "number_reviewers=0"
+        - base_synced
+        - label=mergeable
       actions:
-        - add_pull_request_label: "no-reviewers"
+        - merge_pull_request
 
   - update_if_dirty:
       description: "Update pull requests if their base branch changes"
