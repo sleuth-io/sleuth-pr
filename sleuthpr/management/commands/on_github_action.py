@@ -4,6 +4,7 @@ import os
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from opentracing import tracer
 
 from sleuthpr.models import RepositoryIdentifier
 from sleuthpr.services import installations
@@ -24,17 +25,18 @@ class Command(BaseCommand):
         event_path = os.environ["GITHUB_EVENT_PATH"]
         event_data = json.load(open(event_path))
 
-        repo = event_data["repository"]
-        repos = [RepositoryIdentifier(full_name=repo["full_name"], remote_id=repo["id"])]
-        installation = installations.create(
-            remote_id="1",
-            target_type="github_action",
-            target_id="1",
-            repository_ids=repos,
-            provider="github_action",
-        )
+        with tracer.start_active_span('action', finish_on_close=True):
+            repo = event_data["repository"]
+            repos = [RepositoryIdentifier(full_name=repo["full_name"], remote_id=repo["id"])]
+            installation = installations.create(
+                remote_id="1",
+                target_type="github_action",
+                target_id="1",
+                repository_ids=repos,
+                provider="github_action",
+            )
 
-        logger.info(f"Environment: {settings.ENVIRONMENT}")
-        logger.info(f"event: {event_name}: body: {event_data}")
+            logger.info(f"Environment: {settings.ENVIRONMENT}")
+            logger.info(f"event: {event_name}: body: {event_data}")
 
-        event_task(event_name, event_data, installation=installation)
+            event_task(event_name, event_data, installation=installation)
