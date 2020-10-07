@@ -7,3 +7,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: docker://mrdonbrown/sleuth-pr-dev:0.0.13
+      env:
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
