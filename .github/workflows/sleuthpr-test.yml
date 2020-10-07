@@ -6,6 +6,6 @@ jobs:
   sleuthpr-test:
     runs-on: ubuntu-latest
     steps:
-    - uses: docker://mrdonbrown/sleuth-pr-dev:0.0.11
+    - uses: docker://mrdonbrown/sleuth-pr-dev:0.0.12
       env:
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
