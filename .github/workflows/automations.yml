@@ -3,7 +3,7 @@ name: Automations
 on: [push, pull_request, pull_request_review, check_run]
 
 jobs:
-  sleuthpr-test:
+  run-sleuth-pr:
     runs-on: ubuntu-latest
     steps:
     - uses: docker://mrdonbrown/sleuth-pr-dev:0.0.15
