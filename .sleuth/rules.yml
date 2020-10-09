@@ -2,7 +2,7 @@ rules:
   - auto-merge:
       description: "Automerge any up to date pull requests"
       conditions:
-        - base_synced
+        - behind=false
         - label=mergeable
       actions:
         - merge_pull_request
@@ -10,7 +10,7 @@ rules:
   - update_if_dirty:
       description: "Update pull requests if their base branch changes"
       triggers:
-        - base_branch_updated
+        - behind
       actions:
         - update_pull_request_base
 
