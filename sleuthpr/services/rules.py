@@ -63,20 +63,6 @@ def refresh_from_data(repository: Repository, data: str) -> List[Rule]:
             )
             conditions.append(condition)
 
-        trigger_types: Set[str] = set()
-        triggers_data = rule_data.get("triggers", [])
-        if not triggers_data:
-            for condition in conditions:
-                exp = ParsedExpression(condition.expression)
-                for var in exp.variables:
-                    for trigger_type in var.default_triggers:
-                        trigger_types.add(trigger_type.key)
-        else:
-            trigger_types = set(registry.get_trigger_type(trigger_type_key).key for trigger_type_key in triggers_data)
-
-        for trigger_type in trigger_types:
-            Trigger.objects.create(rule=rule, type=trigger_type)
-
         actions: List[Action] = []
         actions_data = rule_data.get("actions", [])
         for action_data in actions_data:
@@ -100,6 +86,14 @@ def refresh_from_data(repository: Repository, data: str) -> List[Rule]:
             else:
                 raise ValueError("Invalid parameters")
 
+            for condition_str in action_type.conditions:
+                conditions.append(Condition.objects.create(
+                    rule=rule,
+                    description=f"Implied from action {action_type.key}",
+                    expression=condition_str,
+                    order=len(conditions),
+                ))
+
             action = Action.objects.create(
                 rule=rule,
                 description=description,
@@ -108,6 +102,20 @@ def refresh_from_data(repository: Repository, data: str) -> List[Rule]:
                 order=len(actions),
             )
             actions.append(action)
+
+        triggers: Set[Trigger] = set()
+        triggers_data = rule_data.get("triggers", [])
+        if not triggers_data:
+            for condition in conditions:
+                exp = ParsedExpression(condition.expression)
+                for var in exp.variables:
+                    for trigger_type in var.default_triggers:
+                        triggers.add(Trigger.objects.create(rule=rule, type=trigger_type.key,
+                                                            description=f"Implied from variable {var.key}"))
+        else:
+            trigger_types = set(registry.get_trigger_type(trigger_type_key).key for trigger_type_key in triggers_data)
+            for trigger_type in trigger_types:
+                Trigger.objects.create(rule=rule, type=trigger_type, description="")
 
         logger.info(f"Loaded {len(rules)} rules")
 
@@ -163,4 +171,6 @@ def _evaluate_rule(rule: Rule, context: Dict):
         for action in rule.actions.order_by("order").all():
             logger.info(f"Executing action {action.type}")
             action_type = registry.get_action_type(action.type)
-            action_type.execute(action, context)
+            if not action_type.execute(action, context):
+                logger.info(f"Action {action.type} failed, aborting")
+                break

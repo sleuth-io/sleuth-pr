@@ -24,7 +24,7 @@ from sleuthpr.services import pull_requests
 from sleuthpr.services import repositories
 from sleuthpr.services import rules
 from sleuthpr.services.scm import Commit
-from sleuthpr.triggers import PR_CLOSED
+from sleuthpr.triggers import PR_CLOSED, PR_REOPENED
 from sleuthpr.triggers import PR_CREATED
 from sleuthpr.triggers import PR_UPDATED
 from sleuthpr.util import dirty_set_all
@@ -99,8 +99,11 @@ def on_pr_updated(installation: Installation, repository: Repository, pr_data: D
 
 
 def on_pr_closed(installation: Installation, repository: Repository, pr_data: Dict):
-    pr = _update_pull_request_and_process(installation, repository, pr_data, event=PR_CLOSED)
-    pull_requests.delete(repository, pr)
+    _update_pull_request_and_process(installation, repository, pr_data, event=PR_CLOSED)
+
+
+def on_pr_reopened(installation: Installation, repository: Repository, pr_data: Dict):
+    _update_pull_request_and_process(installation, repository, pr_data, event=PR_REOPENED)
 
 
 def on_repositories_added(installation: Installation, data):

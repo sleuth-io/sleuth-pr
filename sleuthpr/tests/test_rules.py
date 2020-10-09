@@ -103,6 +103,6 @@ rules:
     repository = RepositoryFactory()
     rule = refresh_from_data(repository, data)[0]
 
-    assert 2 == len(rule.triggers.all())
-    assert 1 == len(rule.conditions.all())
+    assert 3 == len(rule.triggers.all())
+    assert 2 == len(rule.conditions.all())
     assert {"update_pull_request_base"} == set(t.type for t in rule.actions.all())

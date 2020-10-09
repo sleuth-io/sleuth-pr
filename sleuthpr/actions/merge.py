@@ -1,3 +1,4 @@
+import logging
 from typing import Dict
 
 from marshmallow import fields
@@ -10,12 +11,19 @@ from sleuthpr.models import MergeMethod
 from sleuthpr.models import PullRequest
 
 
+logger = logging.getLogger(__name__)
+
+
 class MergePullRequestActionType(ActionType):
     def __init__(self):
         super().__init__("merge_pull_request", "Merge the pull request", MergePullRequestActionSchema())
 
     def execute(self, action: Action, context: Dict):
         pull_request: PullRequest = context["pull_request"]
+        if pull_request.merged or not pull_request.mergeable:
+            logger.info("PR cannot be merged, skipping merge")
+            return False
+
         action.rule.repository.installation.client.merge(
             pull_request.repository.identifier,
             int(pull_request.remote_id),
@@ -24,6 +32,7 @@ class MergePullRequestActionType(ActionType):
             method=MergeMethod(action.parameters["merge_method"]),
             sha=pull_request.source_sha,
         )
+        return True
 
 
 class MergePullRequestActionSchema(Schema):

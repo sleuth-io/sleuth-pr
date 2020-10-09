@@ -11,7 +11,7 @@ from sleuthpr.models import Repository
 from sleuthpr.models import RepositoryIdentifier
 from sleuthpr.services import installations
 from sleuthpr.services import repositories
-from sleuthpr.services.github.events import on_check_run
+from sleuthpr.services.github.events import on_check_run, on_pr_reopened
 from sleuthpr.services.github.events import on_check_suite_requested
 from sleuthpr.services.github.events import on_installation_created
 from sleuthpr.services.github.events import on_pr_closed
@@ -66,6 +66,8 @@ def event_task(event_name: str, data: Dict, installation: Optional[Installation]
             on_pr_updated(installation, repository, data["pull_request"])
         elif action == "closed":
             on_pr_closed(installation, repository, data["pull_request"])
+        elif action == "reopened":
+            on_pr_reopened(installation, repository, data["pull_request"])
         else:
             logger.info(f"Unhandled subevent: {action}")
     elif event_name == "push":

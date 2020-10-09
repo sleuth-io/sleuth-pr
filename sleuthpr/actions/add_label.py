@@ -20,6 +20,7 @@ class AddPullRequestLabelActionType(ActionType):
         action.rule.repository.installation.client.add_label(
             action.rule.repository.identifier, int(pull_request.remote_id), label_name
         )
+        return True
 
 
 class AddPullRequestLabelActionSchema(Schema):

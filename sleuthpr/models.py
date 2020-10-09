@@ -320,15 +320,16 @@ class TriggerType:
 
 
 class ActionType:
-    def __init__(self, key: str, label: str, parameters: Schema):
+    def __init__(self, key: str, label: str, parameters: Schema, conditions: List[str] = None):
         self.key = key
         self.label = label
         self.parameters = parameters
+        self.conditions = conditions if conditions is not None else []
 
     def __eq__(self, o: Trigger) -> bool:
         return o.key == self.key
 
-    def execute(self, action: Action, context: Dict):
+    def execute(self, action: Action, context: Dict) -> bool:
         pass
 
 
@@ -361,6 +362,7 @@ class Trigger(models.Model):
         verbose_name=_("installation"),
     )
     type = models.CharField(max_length=255)
+    description = models.TextField(max_length=16384, blank=True, default="", verbose_name=_("description"))
 
 
 class Condition(models.Model):
