@@ -10,7 +10,7 @@ rules:
   - update_if_dirty:
       description: "Update pull requests if their base branch changes"
       triggers:
-        - behind
+        - base_branch_updated
       actions:
         - update_pull_request_base
 
