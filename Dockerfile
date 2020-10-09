@@ -5,10 +5,18 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 ARG VERSION
+
+COPY bin/install-re2.sh .
+RUN apt update \
+    && apt -y install wget unzip build-essential \
+    && install-re2.sh
+
 COPY requirements.txt .
 COPY setup.py .
 COPY setup.cfg .
 RUN echo "Version: $VERSION" > /app/PKG-INFO
+
+
 RUN pip install -qq -r requirements.txt
 
 COPY manage.py .

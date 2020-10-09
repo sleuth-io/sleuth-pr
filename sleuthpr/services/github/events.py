@@ -65,7 +65,19 @@ def on_check_run(installation: Installation, repository: Repository, data: Dict)
 
 def on_push(installation: Installation, repository: Repository, data: Dict):
     pull_requests.add_commits(
-        repository, [Commit(sha=c.get("id", c.get("sha")), message=c["message"], parents=[]) for c in data["commits"]]
+        repository,
+        [
+            Commit(
+                sha=c.get("id", c.get("sha")),
+                message=c["message"],
+                parents=[],
+                author_name=c["author"]["name"],
+                author_email=c["author"]["name"],
+                committer_name=c["committer"]["name"],
+                committer_email=c["committer"]["email"],
+            )
+            for c in data["commits"]
+        ],
     )
     if "refs/heads/master" == data["ref"]:
         files = {}
@@ -222,8 +234,11 @@ def _update_pr_details(data, installation, pr):
             author=_get_user(installation, data["user"]),
             draft=data["draft"],
             merged=data.get("merged", False),
-            mergeable=TriState.from_bool(data.get("mergeable")),
-            rebaseable=TriState.from_bool(data.get("rebaseable")),
+            conflict=TriState.UNKNOWN.value
+            if not data.get("mergeable_state")
+            else TriState.from_bool(data.get("mergeable_state") == "dirty").value,
+            mergeable=TriState.from_bool(data.get("mergeable")).value,
+            rebaseable=TriState.from_bool(data.get("rebaseable")).value,
         ),
     )
 

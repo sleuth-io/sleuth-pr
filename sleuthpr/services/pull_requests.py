@@ -18,6 +18,7 @@ from sleuthpr.models import RepositoryCommit
 from sleuthpr.models import RepositoryCommitParent
 from sleuthpr.models import ReviewState
 from sleuthpr.services import checks
+from sleuthpr.services import external_users
 from sleuthpr.services import rules
 from sleuthpr.services.scm import Commit
 from sleuthpr.triggers import BASE_BRANCH_UPDATED
@@ -130,7 +131,6 @@ def refresh_commits(installation: Installation, repository: Repository, pull_req
 
 @transaction.atomic
 def add_commits(repository: Repository, commits: List[Commit]) -> Set[str]:
-
     changed_shas = set()
 
     links: List[Tuple] = []
@@ -148,8 +148,21 @@ def add_commits(repository: Repository, commits: List[Commit]) -> Set[str]:
 
     # Add any missing RepositoryCommits
     for sha in [s for s in all_shas if s not in repo_commits]:
-        message = commits_by_child[sha].message if sha in commits_by_child else None
-        repo_commit = RepositoryCommit.objects.create(repository=repository, sha=sha, message=message)
+        commit = commits_by_child.get(sha, None)
+        if commit:
+            author = external_users.get_or_create(
+                installation=repository.installation, name=commit.author_name, email=commit.author_email
+            )
+            committer = external_users.get_or_create(
+                installation=repository.installation, name=commit.author_name, email=commit.author_email
+            )
+            message = commit.message
+        else:
+            message = author = committer = None
+
+        repo_commit = RepositoryCommit.objects.create(
+            repository=repository, sha=sha, message=message, author=author, committer=committer
+        )
         repo_commits[repo_commit.sha] = repo_commit
         changed_shas.add(sha)
 

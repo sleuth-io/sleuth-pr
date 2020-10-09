@@ -1,4 +1,4 @@
-.PHONY: help rebuild-index lint format lint-py lint-js format-py format-js check-format-py format docs
+.PHONY: help rebuild-index lint format lint-py lint-js format-py format-js check-format-py format docs build
 
 # Help system from https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 .DEFAULT_GOAL := help
@@ -17,6 +17,9 @@ ifeq (, $(shell which ngrok))
 else
 	timeout --foreground --preserve-status 60m ngrok http -hostname=pr-dev.ngrok.io 8000
 endif
+
+
+clean: pyenv ## Clean the project and set everything up
 
 up: docs ## Start the application for development
 	bin/run-web-dev.sh

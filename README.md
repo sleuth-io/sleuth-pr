@@ -17,6 +17,7 @@ Sleuth PR is a pull request automation application to help developers waste less
 Quickstart Guide
 ----------------
 
+- Install [re2](https://github.com/google/re2/tree/2020-10-01)
 - python3.8 -m venv venv && source venv/bin/activate
 - cp config/dev/env.template config/dev/env # and edit with the correct values
 - pip install -r requirements.txt

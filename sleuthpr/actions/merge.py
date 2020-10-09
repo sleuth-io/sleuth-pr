@@ -16,7 +16,12 @@ logger = logging.getLogger(__name__)
 
 class MergePullRequestActionType(ActionType):
     def __init__(self):
-        super().__init__("merge_pull_request", "Merge the pull request", MergePullRequestActionSchema())
+        super().__init__(
+            key="merge_pull_request",
+            label="Merge the pull request",
+            parameters=MergePullRequestActionSchema(),
+            conditions=["draft=false", "merged=false", "closed=false"],
+        )
 
     def execute(self, action: Action, context: Dict):
         pull_request: PullRequest = context["pull_request"]

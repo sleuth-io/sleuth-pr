@@ -4,9 +4,11 @@ from typing import Dict
 from typing import List
 
 import pyparsing as pp
+import re2
 
 from sleuthpr import registry
 from sleuthpr.models import ConditionVariableType
+from sleuthpr.models import TriState
 
 
 class ParsedExpression:
@@ -128,6 +130,14 @@ class Condition:
                 else:
                     raise ValueError("Cannot compare a non-int to a list")
             return leval >= reval
+        elif self.op == "~=":
+            ptn = re2.compile(reval)
+            if isinstance(leval, list):
+                for item in leval:
+                    if ptn.match(item):
+                        return True
+                return False
+            return ptn.match(leval) is not None
         raise ValueError()
 
     def visit(self, visitor: Callable[[Any], None]):
@@ -176,7 +186,13 @@ class Identifier:
         return self.name
 
     def eval(self, context: Dict):
-        return self.variable(context)
+        result = self.variable(context)
+        if isinstance(result, TriState):
+            if result == TriState.UNKNOWN:
+                return False
+            else:
+                return result == TriState.TRUE
+        return result
 
     def visit(self, visitor: Callable[[Any], None]):
         visitor(self)
@@ -204,7 +220,7 @@ rparen = pp.Suppress(")")
 and_ = pp.CaselessLiteral("AND")
 or_ = pp.CaselessLiteral("OR")
 
-op = pp.oneOf(("=", "!=", ">", ">=", "<", "<="))
+op = pp.oneOf(("=", "!=", ">", ">=", "<", "<=", "~="))
 
 true_ = pp.CaselessKeyword("true").setParseAction(Boolean)
 false_ = pp.CaselessKeyword("false").setParseAction(Boolean)

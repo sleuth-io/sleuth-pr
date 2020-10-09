@@ -62,6 +62,12 @@ class TriState(TextChoices):
         else:
             return cls.FALSE
 
+    def to_bool(self) -> bool:
+        return self == TriState.TRUE
+
+    def __bool__(self):
+        return self == self.TRUE
+
 
 class ReviewState(TextChoices):
     APPROVED = ("approved", "Approved")
@@ -182,6 +188,7 @@ class PullRequest(models.Model):
     merged = models.BooleanField(default=False)
     mergeable = models.CharField(max_length=15, choices=TriState.choices, default=TriState.UNKNOWN)
     rebaseable = models.CharField(max_length=15, choices=TriState.choices, default=TriState.UNKNOWN)
+    conflict = models.CharField(max_length=15, choices=TriState.choices, default=TriState.UNKNOWN)
     status = models.CharField(max_length=128, blank=True, null=True, verbose_name=_("status"))
 
 
@@ -254,6 +261,22 @@ class RepositoryCommit(models.Model):
         on_delete=CASCADE,
         related_name="commits",
         verbose_name=_("repository"),
+    )
+
+    author = models.ForeignKey(
+        ExternalUser,
+        related_name="authored_commits",
+        verbose_name=_("author"),
+        on_delete=SET_NULL,
+        null=True,
+    )
+
+    committer = models.ForeignKey(
+        ExternalUser,
+        related_name="committers",
+        verbose_name=_("committer"),
+        on_delete=SET_NULL,
+        null=True,
     )
 
     pull_request = models.ForeignKey(

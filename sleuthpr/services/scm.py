@@ -29,6 +29,10 @@ class CheckDetails:
 class Commit:
     sha: str
     message: str
+    author_name: str
+    author_email: str
+    committer_name: str
+    committer_email: str
     parents: List[str]
 
 
