@@ -20,7 +20,7 @@ class UpdatePullRequestBaseActionType(ActionType):
             parameters=UpdatePullRequestBaseActionSchema(),
             conditions=[
                 "merged=false",
-            ]
+            ],
         )
 
     def execute(self, action: Action, context: Dict):

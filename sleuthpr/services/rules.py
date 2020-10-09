@@ -87,12 +87,14 @@ def refresh_from_data(repository: Repository, data: str) -> List[Rule]:
                 raise ValueError("Invalid parameters")
 
             for condition_str in action_type.conditions:
-                conditions.append(Condition.objects.create(
-                    rule=rule,
-                    description=f"Implied from action {action_type.key}",
-                    expression=condition_str,
-                    order=len(conditions),
-                ))
+                conditions.append(
+                    Condition.objects.create(
+                        rule=rule,
+                        description=f"Implied from action {action_type.key}",
+                        expression=condition_str,
+                        order=len(conditions),
+                    )
+                )
 
             action = Action.objects.create(
                 rule=rule,
@@ -110,8 +112,11 @@ def refresh_from_data(repository: Repository, data: str) -> List[Rule]:
                 exp = ParsedExpression(condition.expression)
                 for var in exp.variables:
                     for trigger_type in var.default_triggers:
-                        triggers.add(Trigger.objects.create(rule=rule, type=trigger_type.key,
-                                                            description=f"Implied from variable {var.key}"))
+                        triggers.add(
+                            Trigger.objects.create(
+                                rule=rule, type=trigger_type.key, description=f"Implied from variable {var.key}"
+                            )
+                        )
         else:
             trigger_types = set(registry.get_trigger_type(trigger_type_key).key for trigger_type_key in triggers_data)
             for trigger_type in trigger_types:

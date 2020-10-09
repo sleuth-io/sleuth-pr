@@ -5,8 +5,9 @@ from sleuthpr.models import CheckStatus
 from sleuthpr.models import ConditionVariableType
 from sleuthpr.models import PullRequest
 from sleuthpr.models import ReviewState
-from sleuthpr.triggers import PR_CLOSED, PR_REOPENED
+from sleuthpr.triggers import PR_CLOSED
 from sleuthpr.triggers import PR_CREATED
+from sleuthpr.triggers import PR_REOPENED
 from sleuthpr.triggers import PR_UPDATED
 from sleuthpr.triggers import REVIEW_UPDATED
 from sleuthpr.triggers import STATUS_UPDATED

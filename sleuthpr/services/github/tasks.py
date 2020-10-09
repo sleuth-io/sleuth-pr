@@ -11,11 +11,12 @@ from sleuthpr.models import Repository
 from sleuthpr.models import RepositoryIdentifier
 from sleuthpr.services import installations
 from sleuthpr.services import repositories
-from sleuthpr.services.github.events import on_check_run, on_pr_reopened
+from sleuthpr.services.github.events import on_check_run
 from sleuthpr.services.github.events import on_check_suite_requested
 from sleuthpr.services.github.events import on_installation_created
 from sleuthpr.services.github.events import on_pr_closed
 from sleuthpr.services.github.events import on_pr_created
+from sleuthpr.services.github.events import on_pr_reopened
 from sleuthpr.services.github.events import on_pr_updated
 from sleuthpr.services.github.events import on_pull_request_review
 from sleuthpr.services.github.events import on_push

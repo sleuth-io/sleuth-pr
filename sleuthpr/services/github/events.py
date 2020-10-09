@@ -24,8 +24,9 @@ from sleuthpr.services import pull_requests
 from sleuthpr.services import repositories
 from sleuthpr.services import rules
 from sleuthpr.services.scm import Commit
-from sleuthpr.triggers import PR_CLOSED, PR_REOPENED
+from sleuthpr.triggers import PR_CLOSED
 from sleuthpr.triggers import PR_CREATED
+from sleuthpr.triggers import PR_REOPENED
 from sleuthpr.triggers import PR_UPDATED
 from sleuthpr.util import dirty_set_all
 
