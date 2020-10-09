@@ -1,15 +1,8 @@
-FROM python:3.8-slim
-
-ENV PYTHONUNBUFFERED=1
+FROM mrdonbrown/sleuth-pr-base:base-1661552
 
 WORKDIR /app
 
 ARG VERSION
-
-COPY bin/install-re2.sh .
-RUN apt update \
-    && apt -y install wget unzip build-essential \
-    && install-re2.sh
 
 COPY requirements.txt .
 COPY setup.py .

@@ -4,7 +4,12 @@ from typing import Dict
 from typing import List
 
 import pyparsing as pp
-import re2
+
+try:
+    import re2 as re
+except ImportError:
+    print("Cannot find re2, switching to insecure default")
+    import re
 
 from sleuthpr import registry
 from sleuthpr.models import ConditionVariableType
@@ -131,7 +136,7 @@ class Condition:
                     raise ValueError("Cannot compare a non-int to a list")
             return leval >= reval
         elif self.op == "~=":
-            ptn = re2.compile(reval)
+            ptn = re.compile(reval)
             if isinstance(leval, list):
                 for item in leval:
                     if ptn.match(item):
