@@ -22,6 +22,7 @@ from sleuthpr.models import PullRequest
 from sleuthpr.models import Repository
 from sleuthpr.models import RepositoryIdentifier
 from sleuthpr.services.github.events import _update_pull_request
+from sleuthpr.services.github.events import commit_data_to_commit
 from sleuthpr.services.scm import CheckDetails
 from sleuthpr.services.scm import Commit
 from sleuthpr.services.scm import InstallationClient
@@ -76,9 +77,7 @@ class GitHubInstallationClient(InstallationClient):
         repo = gh.get_repo(repository.full_name, lazy=True)
 
         def _new_commit(_, __, data, *args, **kwargs):
-            return Commit(
-                sha=data["sha"], message=data["commit"]["message"], parents=[p["sha"] for p in data["parents"]]
-            )
+            return commit_data_to_commit(data)
 
         result = []
         for commit in PaginatedList(
@@ -149,27 +148,28 @@ class GitHubInstallationClient(InstallationClient):
 
     def merge(
         self,
-        repository: RepositoryIdentifier,
+        repository: Repository,
         pr_id: int,
         commit_title: Optional[str],
         commit_message: Optional[str],
         method: MergeMethod,
         sha: str,
-    ):
+    ) -> str:
         gh = Github(self._get_installation_token())
-        repo = gh.get_repo(repository.full_name, lazy=True)
+        repo = gh.get_repo(repository.identifier.full_name, lazy=True)
 
-        repo.get_pull(pr_id).merge(
+        status = repo.get_pull(pr_id).merge(
             commit_title=commit_title,
             commit_message=commit_message,
             merge_method=method.value,
             sha=sha,
         )
         logger.info(f"Merged pr {pr_id}")
+        return status.sha
 
     def update_pull_request(
         self,
-        repository: RepositoryIdentifier,
+        repository: Repository,
         pr_id: int,
         sha: str,
     ):
@@ -185,11 +185,10 @@ class GitHubInstallationClient(InstallationClient):
                     expected_head_sha=sha,
                 ),
             )
+            # todo: handle response better
+            logger.info(f"Pull request being updated")
         except GithubException as ex:
             raise OperationException(ex.data.get("message"))
-
-        # todo: handle response better
-        logger.info(f"Pull request updated for {pr_id}")
 
     def add_check(
         self,

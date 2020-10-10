@@ -1,8 +1,11 @@
 import logging
 from typing import Dict
+from typing import Optional
 
 from django.utils.text import slugify
 
+from sleuthpr import registry
+from sleuthpr.models import ActionResult
 from sleuthpr.models import CheckStatus
 from sleuthpr.models import ConditionVariableType
 from sleuthpr.models import Installation
@@ -65,27 +68,57 @@ def _make_details(ctx: Dict, rule: EvaluatedRule):
     summary = ""
     var_types: Dict[str, ConditionVariableType] = {}
     for cond in rule.conditions:
-        summary = f"{cond.condition.expression} evaluates to {str(cond.evaluation).lower()}\n"
+        emoji = ":heavy_check_mark:" if cond.evaluation else ":heavy_multiplication_x:"
+        summary += f"{emoji} `{cond.condition.expression}`\n"
         for var in ParsedExpression(cond.condition.expression).variables:
             var_types[var.key] = var
 
-    body = "Triggers:\n"
-    for trigger in rule.rule.triggers.all():
-        body += f"* {trigger.type}\n"
+    body = "**Triggers**\n"
+    triggers = list(rule.rule.triggers.all())
+    for trigger in triggers:
+        trigger_type = registry.get_trigger_type(trigger.type)
+        desc = f" -- {trigger.description}" if trigger.description else ""
+        body += f"* {trigger_type.label} (`{trigger.type}`){desc}\n"
+    if not triggers:
+        body += "\nNone\n"
     body += "\n"
-    body += "Conditions:\n"
+    body += "**Conditions**\n"
     for cond in rule.conditions:
-        body += f"* {cond.condition.expression}\n"
+        desc = f" -- {cond.condition.description}" if cond.condition.description else ""
+        body += f"* `{cond.condition.expression}`{desc}\n"
+    if not rule.conditions:
+        body += "\nNone\n"
     body += "\n"
-    body += "Variable values:\n"
+    body += "**Variable values**\n"
     for var in var_types.values():
-        body += f"* {var.label} ({var.key}) = {var(ctx)}\n"
+        value = var(ctx)
+        if isinstance(value, list):
+            value = ", ".join(value)
+        body += f"* {var.label} (`{var.key}`) = `{value}`\n"
+    if not var_types:
+        body += "\nNone\n"
     body += "\n"
-    body += "Actions when successful:\n"
-    for action in rule.rule.ordered_actions:
-        body += f"* {action.type}\n"
+    body += "**Actions when successful**\n"
 
-    body += f"\n[source]({rule.rule.repository.source_url('.sleuth/rules.yml')})"
+    head = ctx["pull_request"].source_commit
+    for action in rule.rule.ordered_actions:
+        action_type = registry.get_action_type(action.type)
+        desc = f" -- {action.description}" if action.description else ""
+        result: Optional[ActionResult] = action.results.filter(commit=head).first()
+        if result:
+            result_status = CheckStatus(result.status)
+            if result_status == CheckStatus.SUCCESS:
+                emoji = ":heavy_check_mark:"
+            else:
+                emoji = ":heavy_multiplication_x:"
+            result_desc = f":: {result.message}"
+        else:
+            emoji = ":grey_question:"
+            result_desc = ""
+        body += f"* {emoji} {action_type.label} (`{action.type}`){desc}{result_desc}\n"
+    body += "\n(see the pull request history for results)\n"
+
+    body += f"\n[Rule source]({rule.rule.repository.source_url('.sleuth/rules.yml')})"
 
     return CheckDetails(
         title=rule.rule.description,

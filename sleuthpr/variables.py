@@ -5,6 +5,7 @@ from sleuthpr.models import CheckStatus
 from sleuthpr.models import ConditionVariableType
 from sleuthpr.models import PullRequest
 from sleuthpr.models import ReviewState
+from sleuthpr.models import TriState
 from sleuthpr.triggers import BASE_BRANCH_UPDATED
 from sleuthpr.triggers import PR_CLOSED
 from sleuthpr.triggers import PR_CREATED
@@ -99,7 +100,7 @@ MERGEABLE = ConditionVariableType(
     label="Mergeable",
     type=bool,
     default_triggers=[PR_CREATED, PR_UPDATED, PR_CLOSED],
-    evaluate=lambda context: context["pull_request"].mergeable.to_bool(),
+    evaluate=lambda context: TriState(context["pull_request"].mergeable).to_bool(),
 )
 
 MERGED = ConditionVariableType(
@@ -141,7 +142,7 @@ CONFLICT = ConditionVariableType(
     label="Conflict with base branch",
     type=bool,
     default_triggers=[BASE_BRANCH_UPDATED, PR_UPDATED, PR_CREATED],
-    evaluate=lambda context: context["pull_request"].conflict,
+    evaluate=lambda context: TriState(context["pull_request"].conflict).to_bool(),
 )
 
 COMMIT_MESSAGE = ConditionVariableType(

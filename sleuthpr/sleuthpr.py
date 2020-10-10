@@ -4,6 +4,7 @@ from sleuthpr.actions.update import UpdatePullRequestBaseActionType
 from sleuthpr.triggers import BASE_BRANCH_UPDATED
 from sleuthpr.triggers import PR_CLOSED
 from sleuthpr.triggers import PR_CREATED
+from sleuthpr.triggers import PR_REOPENED
 from sleuthpr.triggers import PR_UPDATED
 from sleuthpr.triggers import REVIEW_UPDATED
 from sleuthpr.triggers import STATUS_UPDATED
@@ -28,7 +29,7 @@ from sleuthpr.variables import REVIEWER
 from sleuthpr.variables import STATUS_STATE_VARS
 from sleuthpr.variables import TITLE
 
-trigger_types = [PR_UPDATED, PR_CREATED, PR_CLOSED, STATUS_UPDATED, REVIEW_UPDATED, BASE_BRANCH_UPDATED]
+trigger_types = [PR_UPDATED, PR_CREATED, PR_CLOSED, STATUS_UPDATED, REVIEW_UPDATED, BASE_BRANCH_UPDATED, PR_REOPENED]
 
 condition_variable_types = [
     NUMBER_REVIEWERS,

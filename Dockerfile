@@ -10,7 +10,7 @@ COPY setup.cfg .
 RUN echo "Version: $VERSION" > /app/PKG-INFO
 
 
-RUN pip install -qq -r requirements.txt
+RUN pip install -qq -e .[prod]
 
 COPY manage.py .
 COPY bin/run-github-action.sh .

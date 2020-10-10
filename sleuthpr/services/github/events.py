@@ -66,18 +66,7 @@ def on_check_run(installation: Installation, repository: Repository, data: Dict)
 def on_push(installation: Installation, repository: Repository, data: Dict):
     pull_requests.add_commits(
         repository,
-        [
-            Commit(
-                sha=c.get("id", c.get("sha")),
-                message=c["message"],
-                parents=[],
-                author_name=c["author"]["name"],
-                author_email=c["author"]["name"],
-                committer_name=c["committer"]["name"],
-                committer_email=c["committer"]["email"],
-            )
-            for c in data["commits"]
-        ],
+        [commit_data_to_commit(c) for c in data["commits"]],
     )
     if "refs/heads/master" == data["ref"]:
         files = {}
@@ -153,6 +142,18 @@ def on_installation_created(remote_id: str, data):
         target_id=target_id,
         repository_ids=repos,
         provider="github",
+    )
+
+
+def commit_data_to_commit(c) -> Commit:
+    return Commit(
+        sha=c.get("id", c.get("sha")),
+        message=c.get("message"),
+        parents=[p["sha"] for p in c.get("parents", [])],
+        author_name=c["author"].get("name", c["author"].get("login")),
+        author_email=c["author"].get("email"),
+        committer_name=c["committer"].get("name", c["author"].get("login")),
+        committer_email=c["committer"].get("email"),
     )
 
 

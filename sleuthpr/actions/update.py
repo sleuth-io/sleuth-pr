@@ -1,10 +1,12 @@
 import logging
 from typing import Dict
+from typing import Tuple
 
 from marshmallow import Schema
 
 from sleuthpr.models import Action
 from sleuthpr.models import ActionType
+from sleuthpr.models import CheckStatus
 from sleuthpr.models import PullRequest
 from sleuthpr.services.scm import OperationException
 
@@ -23,31 +25,20 @@ class UpdatePullRequestBaseActionType(ActionType):
             ],
         )
 
-    def execute(self, action: Action, context: Dict):
+    def execute(self, action: Action, context: Dict) -> Tuple[CheckStatus, str]:
         pull_request: PullRequest = context["pull_request"]
         if pull_request.merged:
             logger.info("PR already merged, skipping update")
-            return False
+            return CheckStatus.SUCCESS, "Pull request already up to date, skipping update"
         try:
             action.rule.repository.installation.client.update_pull_request(
-                pull_request.repository.identifier,
+                pull_request.repository,
                 int(pull_request.remote_id),
                 sha=pull_request.source_sha,
             )
-            message = f"Updated the pull request by merging master as requested by rule {action.rule.title}"
+            return CheckStatus.PENDING, f"Updating the pull request by merging base"
         except OperationException as ex:
-            message = (
-                f"Unable to update pull request by merging master as requested by rule {action.rule.title}: {ex}"
-            )
-
-        action.rule.repository.installation.client.comment_on_pull_request(
-            pull_request.repository.identifier,
-            int(pull_request.remote_id),
-            pull_request.source_sha,
-            message=message,
-        )
-
-        return True
+            return CheckStatus.ERROR, f"Unable to update pull request by merging master: {ex}"
 
 
 class UpdatePullRequestBaseActionSchema(Schema):

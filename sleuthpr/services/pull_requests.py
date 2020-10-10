@@ -147,7 +147,7 @@ def add_commits(repository: Repository, commits: List[Commit]) -> Set[str]:
     repo_commits = {c.sha: c for c in repository.commits.filter(sha__in=all_shas).all()}
 
     # Add any missing RepositoryCommits
-    for sha in [s for s in all_shas if s not in repo_commits]:
+    for sha in {s for s in all_shas if s not in repo_commits}:
         commit = commits_by_child.get(sha, None)
         if commit:
             author = external_users.get_or_create(

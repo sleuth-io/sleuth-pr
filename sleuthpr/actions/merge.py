@@ -1,5 +1,6 @@
 import logging
 from typing import Dict
+from typing import Tuple
 
 from marshmallow import fields
 from marshmallow import Schema
@@ -7,6 +8,7 @@ from marshmallow import validate
 
 from sleuthpr.models import Action
 from sleuthpr.models import ActionType
+from sleuthpr.models import CheckStatus
 from sleuthpr.models import MergeMethod
 from sleuthpr.models import PullRequest
 
@@ -23,21 +25,21 @@ class MergePullRequestActionType(ActionType):
             conditions=["draft=false", "merged=false", "closed=false"],
         )
 
-    def execute(self, action: Action, context: Dict):
+    def execute(self, action: Action, context: Dict) -> Tuple[CheckStatus, str]:
         pull_request: PullRequest = context["pull_request"]
         if pull_request.merged or not pull_request.mergeable:
             logger.info("PR cannot be merged, skipping merge")
-            return False
+            return CheckStatus.FAILURE, "Pull request was not mergeable"
 
-        action.rule.repository.installation.client.merge(
-            pull_request.repository.identifier,
+        new_sha = action.rule.repository.installation.client.merge(
+            pull_request.repository,
             int(pull_request.remote_id),
             commit_title=action.parameters["commit_title"],
             commit_message=action.parameters["commit_message"],
             method=MergeMethod(action.parameters["merge_method"]),
             sha=pull_request.source_sha,
         )
-        return True
+        return CheckStatus.SUCCESS, f"Pull request merged successfully in {new_sha}"
 
 
 class MergePullRequestActionSchema(Schema):

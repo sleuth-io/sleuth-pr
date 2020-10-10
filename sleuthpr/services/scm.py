@@ -65,13 +65,13 @@ class InstallationClient:
 
     def merge(
         self,
-        repository: RepositoryIdentifier,
+        repository: Repository,
         pr_id: int,
         commit_title: Optional[str],
         commit_message: Optional[str],
         method: MergeMethod,
         sha: str,
-    ):
+    ) -> str:
         pass
 
     def add_check(
@@ -95,7 +95,7 @@ class InstallationClient:
 
     def update_pull_request(
         self,
-        repository: RepositoryIdentifier,
+        repository: Repository,
         pr_id: int,
         sha: str,
     ):

@@ -191,6 +191,14 @@ class PullRequest(models.Model):
     conflict = models.CharField(max_length=15, choices=TriState.choices, default=TriState.UNKNOWN)
     status = models.CharField(max_length=128, blank=True, null=True, verbose_name=_("status"))
 
+    @property
+    def source_commit(self) -> Optional[RepositoryCommit]:
+        return self.repository.commits.get(sha=self.source_sha) if self.source_sha else None
+
+    @property
+    def base_commit(self) -> Optional[RepositoryCommit]:
+        return self.repository.commits.get(sha=self.base_sha) if self.base_sha else None
+
 
 class PullRequestAssignee(models.Model):
     user = models.ForeignKey(
@@ -254,6 +262,12 @@ class PullRequestStatus(models.Model):
 
 
 class RepositoryCommit(models.Model):
+    class Meta:
+        unique_together = (
+            "repository",
+            "sha",
+        )
+
     sha = models.CharField(max_length=1024, verbose_name=_("sha"), db_index=True)
     message = models.TextField(max_length=16384, null=True, blank=True, verbose_name=_("message"))
     repository = models.ForeignKey(
@@ -316,6 +330,7 @@ class Rule(models.Model):
     title = models.CharField(default="", max_length=255, verbose_name=_("title"), db_index=True)
     description = models.TextField(max_length=16384, blank=True, verbose_name=_("description"))
     on = models.DateTimeField(default=now, verbose_name=_("created on"), db_index=True)
+    line_number = models.IntegerField(default=-1)
     repository = models.ForeignKey(
         Repository,
         on_delete=CASCADE,
@@ -386,12 +401,14 @@ class Trigger(models.Model):
     )
     type = models.CharField(max_length=255)
     description = models.TextField(max_length=16384, blank=True, default="", verbose_name=_("description"))
+    line_number = models.IntegerField(default=-1)
 
 
 class Condition(models.Model):
     description = models.TextField(max_length=16384, blank=True, verbose_name=_("description"))
     expression = models.TextField(max_length=16384, blank=True, verbose_name=_("expression"))
     on = models.DateTimeField(default=now, verbose_name=_("created on"), db_index=True)
+    line_number = models.IntegerField(default=-1)
     rule = models.ForeignKey(
         Rule,
         on_delete=CASCADE,
@@ -432,6 +449,7 @@ class Action(models.Model):
     description = models.TextField(max_length=16384, blank=True, verbose_name=_("description"))
     on = models.DateTimeField(default=now, verbose_name=_("created on"), db_index=True)
     parameters = models.JSONField()
+    line_number = models.IntegerField(default=-1)
     rule = models.ForeignKey(
         Rule,
         on_delete=CASCADE,
@@ -439,3 +457,21 @@ class Action(models.Model):
         verbose_name=_("rule"),
     )
     order = models.IntegerField()
+
+
+class ActionResult(models.Model):
+    action = models.ForeignKey(
+        Action,
+        on_delete=CASCADE,
+        related_name="results",
+        verbose_name=_("action"),
+    )
+    commit = models.ForeignKey(
+        RepositoryCommit,
+        on_delete=CASCADE,
+        related_name="actions_results",
+        verbose_name=_("commit"),
+    )
+    status = models.CharField(max_length=50, db_index=True, choices=CheckStatus.choices)
+    message = models.TextField(max_length=16384, blank=True, verbose_name=_("message"))
+    on = models.DateTimeField(default=now, verbose_name=_("created on"), db_index=True)
