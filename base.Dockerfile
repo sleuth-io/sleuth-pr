@@ -8,5 +8,5 @@ COPY bin/install-re2.sh /app/install-re2.sh
 RUN apt update \
     && apt -y install wget unzip build-essential \
     && find . \
-    && /app/install-re2.sh 
+    && /app/install-re2.sh
 
