@@ -1,4 +1,4 @@
-FROM mrdonbrown/sleuth-pr-base:base-1661552
+FROM mrdonbrown/sleuth-pr-base:base-6a8a3cd
 
 WORKDIR /app
 
