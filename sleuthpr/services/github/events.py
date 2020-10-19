@@ -1,5 +1,6 @@
 import logging
 from typing import Dict
+from typing import Optional
 from typing import Tuple
 
 from dateutil import parser
@@ -13,6 +14,8 @@ from sleuthpr.models import PullRequestAssignee
 from sleuthpr.models import PullRequestLabel
 from sleuthpr.models import PullRequestReviewer
 from sleuthpr.models import Repository
+from sleuthpr.models import RepositoryBranch
+from sleuthpr.models import RepositoryCommit
 from sleuthpr.models import RepositoryIdentifier
 from sleuthpr.models import ReviewState
 from sleuthpr.models import TriState
@@ -35,10 +38,9 @@ logger = logging.getLogger(__name__)
 
 def on_check_suite_requested(installation: Installation, repository: Repository, data: Dict):
     for pr_data in data["pull_requests"]:
-        pr, was_changed = _update_pull_request(installation, repository, pr_data)
+        pr, _ = _update_pull_request(installation, repository, pr_data)
         checks.clear_checks(pr)
-        if was_changed:
-            pull_requests.on_updated(installation, repository, pr)
+        checks.update_checks(installation, repository, pr)
 
 
 def on_pull_request_review(installation: Installation, repository: Repository, data: Dict):
@@ -64,9 +66,11 @@ def on_check_run(installation: Installation, repository: Repository, data: Dict)
 
 
 def on_push(installation: Installation, repository: Repository, data: Dict):
+    logger.info(f"Push: {data['commits']}")
+    commits = installation.client.get_commits(repository, [c["id"] for c in data["commits"]])
     pull_requests.add_commits(
         repository,
-        [commit_data_to_commit(c) for c in data["commits"]],
+        commits,
     )
     if "refs/heads/master" == data["ref"]:
         files = {}
@@ -157,6 +161,18 @@ def commit_data_to_commit(c) -> Commit:
     )
 
 
+def graphql_commit_data_to_commit(c) -> Commit:
+    return Commit(
+        sha=c.get("oid"),
+        message=c.get("message"),
+        parents=[edge["node"]["oid"] for edge in c["parents"]["edges"]],
+        author_name=c["author"].get("name", c["author"].get("login")),
+        author_email=c["author"].get("email"),
+        committer_name=c["committer"].get("name", c["author"].get("login")),
+        committer_email=c["committer"].get("email"),
+    )
+
+
 def _update_pull_request_and_process(
     installation: Installation, repository: Repository, data: Dict, event=PR_UPDATED
 ):
@@ -180,6 +196,8 @@ def _update_pull_request(installation: Installation, repository: Repository, dat
 
     if is_dirty:
         pr.save()
+        _ensure_commit(repository=repository, sha=pr.source_sha, pull_request=pr, branch=pr.source_branch_name)
+        _ensure_commit(repository, pr.base_sha)
 
     if "title" not in data:
         return pr, is_dirty
@@ -224,6 +242,27 @@ def _update_pull_request(installation: Installation, repository: Repository, dat
     return pr, is_dirty
 
 
+def _ensure_commit(
+    repository: Repository, sha: str, pull_request: Optional[PullRequest] = None, branch: Optional[str] = None
+):
+    existing_commit = repository.commits.filter(sha=sha).first()
+    if existing_commit:
+        if pull_request and existing_commit.pull_request is None:
+            existing_commit.pull_request = pull_request
+            existing_commit.save()
+        return
+    else:
+        commit = RepositoryCommit.objects.create(sha=sha, repository=repository, pull_request=pull_request)
+        if branch:
+            existing = repository.branches.filter(name=branch).first()
+            if existing:
+                if existing.head_sha != commit.sha:
+                    existing.head_sha = commit.sha
+                    existing.save()
+            else:
+                RepositoryBranch.objects.create(repository=repository, name=branch, head_sha=commit.sha)
+
+
 def _update_pr_details(data, installation, pr):
     return dirty_set_all(
         pr,
@@ -252,7 +291,7 @@ def _update_pr_headers(data, pr, remote_id):
             source_branch_name=data["head"]["ref"],
             source_sha=data["head"]["sha"],
             base_branch_name=data["base"]["ref"],
-            base_sha=data["head"]["sha"],
+            base_sha=data["base"]["sha"],
         ),
     )
 

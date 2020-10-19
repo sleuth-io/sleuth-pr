@@ -22,7 +22,7 @@ class CheckDetails:
     title: str
     summary: str
     body: str
-    success: bool
+    status: CheckStatus
 
 
 @dataclass
@@ -124,4 +124,7 @@ class InstallationClient:
         pass
 
     def get_source_url(self, repository: RepositoryIdentifier, path: str) -> str:
+        pass
+
+    def get_commits(self, repository: Repository, shas: List[str]) -> List[Commit]:
         pass

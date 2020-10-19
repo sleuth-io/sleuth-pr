@@ -36,7 +36,7 @@ class UpdatePullRequestBaseActionType(ActionType):
                 int(pull_request.remote_id),
                 sha=pull_request.source_sha,
             )
-            return CheckStatus.PENDING, f"Updating the pull request by merging base"
+            return CheckStatus.SUCCESS, f"Pull request update requested"
         except OperationException as ex:
             return CheckStatus.ERROR, f"Unable to update pull request by merging master: {ex}"
 

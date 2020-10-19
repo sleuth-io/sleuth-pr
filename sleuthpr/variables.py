@@ -1,3 +1,4 @@
+import logging
 from functools import partial
 from typing import List
 
@@ -13,6 +14,10 @@ from sleuthpr.triggers import PR_REOPENED
 from sleuthpr.triggers import PR_UPDATED
 from sleuthpr.triggers import REVIEW_UPDATED
 from sleuthpr.triggers import STATUS_UPDATED
+
+
+logger = logging.getLogger(__name__)
+
 
 NUMBER_REVIEWERS = ConditionVariableType(
     key="number_reviewers",
@@ -159,8 +164,20 @@ def _is_base_branch_synchronized(pull_request: PullRequest):
 
     branch_head = repo.branches.filter(name=pull_request.base_branch_name).first()
     if branch_head:
-        return repo.commit_tree.filter(child__pull_request=pull_request, parent__sha=branch_head.head_sha).exists()
+        branch_head.refresh_from_db()
+        logger.info(f"Branch {branch_head.name} and id {id(branch_head)} for pr {pull_request.remote_id}")
+        result = repo.commit_tree.filter(child__pull_request=pull_request, parent__sha=branch_head.head_sha).exists()
+        if not result:
+            logger.info(
+                f"Nothing in the tree where the parent ({branch_head.name}) is {branch_head.head_sha} and has a pull request"
+            )
+            without_pr = repo.commit_tree.filter(parent__sha=branch_head.head_sha).first()
+            logger.info(
+                f"Does that sha exist but just not associated with the pull request? {without_pr.child.sha if without_pr else 'No'}"
+            )
+        return result
     else:
+        logger.info(f"No base head found for {pull_request.base_branch_name}")
         return False
 
 

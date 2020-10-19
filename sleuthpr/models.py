@@ -6,6 +6,7 @@ from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import Type
 
 from django.db import models
@@ -29,10 +30,11 @@ class MergeMethod(TextChoices):
     MERGE = ("merge", "Merge commit")
 
 
-@dataclass
 class RepositoryIdentifier:
-    full_name: str
-    remote_id: Optional[str] = None
+    def __init__(self, full_name: str, remote_id: Optional[str] = None):
+        self.full_name = full_name
+        self.remote_id = remote_id
+        self.owner, self.name = self.full_name.split("/")
 
 
 class Provider(TextChoices):
@@ -367,7 +369,7 @@ class ActionType:
     def __eq__(self, o: Trigger) -> bool:
         return o.key == self.key
 
-    def execute(self, action: Action, context: Dict) -> bool:
+    def execute(self, action: Action, context: Dict) -> Tuple[CheckStatus, str]:
         pass
 
 

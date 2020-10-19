@@ -27,37 +27,43 @@ def clear_checks(pull_request: PullRequest):
 
 
 def update_checks(installation: Installation, repository: Repository, pull_request: PullRequest):
+    for rule in rules.evaluate_rules_no_execute(repository, {"pull_request": pull_request}):
+        update_checks_for_rule(installation, repository, pull_request, rule)
+
+
+def update_checks_for_rule(
+    installation: Installation, repository: Repository, pull_request: PullRequest, evaluated_rule: EvaluatedRule
+):
     ctx = {"pull_request": pull_request}
 
     existing_checks: Dict = {run.rule.id: run for run in RuleCheckRun.objects.filter(pull_request=pull_request).all()}
 
-    for rule in rules.evaluate_rules(repository, ctx):
-        eval_as_status = CheckStatus.SUCCESS if rule.evaluation else CheckStatus.FAILURE
-        if not existing_checks.get(rule.id):
-            logger.info(f"No existing check for rule {rule.id} found, creating a new one")
-            check_id = installation.client.add_check(
-                repository.identifier,
-                _make_key(rule.rule),
-                pull_request.source_sha,
-                details=_make_details(ctx, rule),
-            )
-            RuleCheckRun.objects.create(
-                rule=rule.rule,
-                status=eval_as_status,
-                remote_id=check_id,
-                pull_request=pull_request,
-            )
-        elif existing_checks[rule.id] != eval_as_status:
-            logger.info(f"Check outdated for rule {rule.id}, updating")
-            installation.client.update_check(
-                repository.identifier,
-                _make_key(rule.rule),
-                pull_request.source_sha,
-                details=_make_details(ctx, rule),
-                remote_check_id=existing_checks[rule.id].remote_id,
-            )
-        else:
-            logger.info(f"Check exists for rule {rule.id} and is up to date, doing nothing")
+    logger.info(f"Updating pr {pull_request.remote_id} for rule {evaluated_rule.id} to {evaluated_rule.evaluation}")
+    if not existing_checks.get(evaluated_rule.id):
+        logger.info(f"No existing check for rule {evaluated_rule.id} found, creating a new one")
+        check_id = installation.client.add_check(
+            repository.identifier,
+            _make_key(evaluated_rule.rule),
+            pull_request.source_sha,
+            details=_make_details(ctx, evaluated_rule),
+        )
+        RuleCheckRun.objects.create(
+            rule=evaluated_rule.rule,
+            status=evaluated_rule.evaluation,
+            remote_id=check_id,
+            pull_request=pull_request,
+        )
+    elif CheckStatus(existing_checks[evaluated_rule.id].status) != evaluated_rule.evaluation:
+        logger.info(f"Check outdated for rule {evaluated_rule.id}, updating")
+        installation.client.update_check(
+            repository.identifier,
+            _make_key(evaluated_rule.rule),
+            pull_request.source_sha,
+            details=_make_details(ctx, evaluated_rule),
+            remote_check_id=existing_checks[evaluated_rule.id].remote_id,
+        )
+    else:
+        logger.info(f"Check exists for rule {evaluated_rule.id} and is up to date, doing nothing")
 
 
 def _make_key(rule: Rule):
@@ -111,7 +117,7 @@ def _make_details(ctx: Dict, rule: EvaluatedRule):
                 emoji = ":heavy_check_mark:"
             else:
                 emoji = ":heavy_multiplication_x:"
-            result_desc = f":: {result.message}"
+            result_desc = f" :: {result.message}"
         else:
             emoji = ":grey_question:"
             result_desc = ""
@@ -124,5 +130,5 @@ def _make_details(ctx: Dict, rule: EvaluatedRule):
         title=rule.rule.description,
         summary=summary,
         body=body,
-        success=rule.evaluation,
+        status=rule.evaluation,
     )

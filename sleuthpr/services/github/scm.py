@@ -23,6 +23,7 @@ from sleuthpr.models import Repository
 from sleuthpr.models import RepositoryIdentifier
 from sleuthpr.services.github.events import _update_pull_request
 from sleuthpr.services.github.events import commit_data_to_commit
+from sleuthpr.services.github.events import graphql_commit_data_to_commit
 from sleuthpr.services.scm import CheckDetails
 from sleuthpr.services.scm import Commit
 from sleuthpr.services.scm import InstallationClient
@@ -86,6 +87,25 @@ class GitHubInstallationClient(InstallationClient):
             result.append(commit)
 
         logger.info(f"Loaded {len(result)} commits")
+        return result
+
+    def get_commits(self, repository: Repository, shas: List[str]) -> List[Commit]:
+        gh = Github(self._get_installation_token())
+        post_parameters = {
+            "query": _build_commits_query(repository.identifier, shas),
+        }
+        headers, data = getattr(gh, "_Github__requester").requestJsonAndCheck(
+            "POST", "/graphql", input=post_parameters
+        )
+
+        result = []
+        for sha in shas:
+            cdata = data["data"]["repository"][f"c_{sha}"]
+            result.append(graphql_commit_data_to_commit(cdata))
+
+        # todo: handle errors
+
+        logger.info(f"Loaded {len(result)} commits from graphql")
         return result
 
     def comment_on_pull_request(
@@ -208,14 +228,24 @@ class GitHubInstallationClient(InstallationClient):
                 name=key,
                 output=dict(title=details.title, summary=details.summary, text=details.body),
                 status="completed",
-                conclusion="success" if details.success else "neutral",
+                conclusion=self._status_to_check_conclusion(details),
             ),
         )
-        logger.info(f"Status check on {source_sha} created for {key}: {details.success}")
+        logger.info(f"Status check on {source_sha} created for {key}: {details.status}")
         # todo: check response?
         # for pr_data in data["pull_requests"]:
         #     _update_pull_request(repo.installation, repo, pr_data)
         return data["id"]
+
+    @staticmethod
+    def _status_to_check_conclusion(details):
+        if details.status == CheckStatus.SUCCESS:
+            conclusion = "success"
+        elif details.status == CheckStatus.FAILURE:
+            conclusion = "failure"
+        else:
+            conclusion = "neutral"
+        return conclusion
 
     def update_check(
         self,
@@ -236,10 +266,10 @@ class GitHubInstallationClient(InstallationClient):
                 name=key,
                 output=dict(title=details.title, summary=details.summary, text=details.body),
                 status="completed",
-                conclusion="success" if details.success else "neutral",
+                conclusion=self._status_to_check_conclusion(details),
             ),
         )
-        logger.info(f"Status check on {source_sha} updated for {key}: {details.success}")
+        logger.info(f"Status check on {source_sha} updated for {key}: {details.status}")
         # todo: check response?
         # for pr_data in data["pull_requests"]:
         #     _update_pull_request(repo.installation, repo, pr_data)
@@ -288,3 +318,45 @@ def _gen_jwt():
         key=private_key,
         algorithm="RS256",
     ).decode()
+
+
+def _build_commits_query(repo: RepositoryIdentifier, commit_shas: List[str]) -> str:
+    commit_queries = []
+    for sha in commit_shas:
+        commit_queries.append(
+            f"""
+            c_{sha}: object(oid: "{sha}") {{
+              ... on Commit {{
+                oid
+                message 
+                author {{
+                  name
+                  email
+                }}
+                committer {{
+                  name
+                  email
+                }}
+                parents(first:100) {{
+                  edges {{
+                    node {{
+                      ... on Commit {{
+                        oid
+                      }}
+                    }}
+                  }}
+                }}
+              }}    
+            }}"""
+        )
+
+    joined_commit_queries = "\n".join(commit_queries)
+    query = f"""
+    {{
+        repository(owner: "{repo.owner}", name: "{repo.name}")
+        {{
+            {joined_commit_queries}
+        }}
+    }}
+    """
+    return query

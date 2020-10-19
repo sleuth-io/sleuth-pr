@@ -16,6 +16,7 @@ def update_sha(installation: Installation, repository: Repository, name: str, sh
         dirty = True
     else:
         dirty = dirty_set_all(existing, dict(head_sha=sha))
+        existing.save()
 
     if dirty:
         pull_requests.on_source_change(installation, repository, name, sha)

@@ -1,7 +1,9 @@
 import logging
 from dataclasses import dataclass
 from typing import Dict
+from typing import Iterable
 from typing import List
+from typing import Optional
 from typing import Set
 
 import strictyaml
@@ -179,23 +181,53 @@ class EvaluatedCondition:
 
 
 class EvaluatedRule:
-    def __init__(self, rule: Rule, conditions: List[EvaluatedCondition]):
+    def __init__(self, rule: Rule, conditions: List[EvaluatedCondition], results: List[ActionResult]):
         self.conditions = conditions
         self.rule = rule
         self.id = rule.id
-        self.evaluation = all(c.evaluation for c in conditions)
+        self.results = results
+        self.evaluation = CheckStatus.PENDING
+        if results:
+            for status in (CheckStatus(r.status) for r in results):
+                if status == CheckStatus.FAILURE:
+                    self.evaluation = CheckStatus.FAILURE
+                    break
+                elif status == CheckStatus.PENDING:
+                    self.evaluation = CheckStatus.PENDING
+                    break
+                elif status == CheckStatus.SUCCESS:
+                    self.evaluation = CheckStatus.SUCCESS
 
 
-def evaluate_rules(repository: Repository, context: Dict) -> List[EvaluatedRule]:
+def evaluate_rules_no_execute(
+    repository: Repository, context: Dict, rule: Optional[Rule] = None
+) -> List[EvaluatedRule]:
     result = []
-    for rule in repository.ordered_rules:
-        logger.info(f"[eval] Evaluating rule {rule.id}")
-        conditions: List[EvaluatedCondition] = []
-        for condition in rule.ordered_conditions:
-            expression = ParsedExpression(condition.expression)
-            conditions.append(EvaluatedCondition(condition=condition, evaluation=expression.execute(**context)))
-        result.append(EvaluatedRule(rule, conditions))
+    if rule is not None:
+        rules: Iterable[Rule] = []
+    else:
+        rules: Iterable[Rule] = repository.ordered_rules
+
+    for rule in rules:
+        result.append(_evaluate_rule_no_execute(context, repository, rule))
     return result
+
+
+def _evaluate_rule_no_execute(context, repository, rule) -> EvaluatedRule:
+    logger.info(f"[eval] Evaluating rule {rule.id}")
+    conditions: List[EvaluatedCondition] = []
+    for condition in rule.ordered_conditions:
+        expression = ParsedExpression(condition.expression)
+        result = expression.execute(**context)
+        conditions.append(EvaluatedCondition(condition=condition, evaluation=result))
+    action_results = []
+    sha = repository.commits.get(sha=context.get("pull_request").source_sha)
+    for action in rule.ordered_actions.prefetch_related("results").all():  # type: Action
+        action_result = action.results.filter(commit=sha).first()
+        if not action_result:
+            action_result = ActionResult(action=action, commit=sha, status=CheckStatus.PENDING)
+        action_results.append(action_result)
+    return EvaluatedRule(rule, conditions, results=action_results)
 
 
 def evaluate(repository: Repository, trigger_type: TriggerType, context: Dict):
@@ -208,40 +240,45 @@ def _evaluate_rule(rule: Rule, context: Dict):
     logger.info(f"[exec] Evaluating rule {rule.id} - {rule.title}")
     repository = rule.repository
     installation = repository.installation
+
+    evaluated_rule = _evaluate_rule_no_execute(context, repository, rule=rule)
+
     conditions_ok = True
-    for condition in rule.ordered_conditions:
-        expression = ParsedExpression(condition.expression)
-        logger.info(f"Evaluating condition {condition.expression}")
-        if expression.execute(**context):
-            logger.info("Condition was true")
+    for evaluated_condition in evaluated_rule.conditions:
+        if evaluated_condition.evaluation:
+            logger.info(f"Condition {evaluated_condition.condition.expression} was true")
         else:
-            logger.info("Condition was false")
+            logger.info(f"Condition {evaluated_condition.condition.expression} was false")
             conditions_ok = False
 
+    pr: PullRequest = context["pull_request"]
     if conditions_ok:
         logger.info("All conditions ok, executing actions")
-        pr: PullRequest = context["pull_request"]
+
         head = pr.source_commit
         for action in rule.actions.order_by("order").all():
-            logger.info(f"Executing action {action.type}")
+            logger.info(f"Executing action {action.type} for {pr.remote_id}")
             action_type = registry.get_action_type(action.type)
-            result, message = action_type.execute(action, context)
-            _update_action_result(installation, repository, pr, action, head, message, result)
+            try:
+                result, message = action_type.execute(action, context)
+            except Exception as e:
+                result = CheckStatus.FAILURE
+                message = f"Error executing action: {e}"
+            _update_action_result(action, head, message, result)
 
             if result != CheckStatus.SUCCESS:
-                logger.info(f"Action {action.type} failed with status {result}, aborting")
+                logger.info(f"Action {action.type} failed on {pr.remote_id} with status {result}, aborting")
                 break
 
+    from sleuthpr.services import checks
 
-def _update_action_result(
-    installation: Installation, repository: Repository, pull_request: PullRequest, action, head, message, result
-):
+    checks.update_checks_for_rule(installation, repository, pr, evaluated_rule=evaluated_rule)
+
+
+def _update_action_result(action, head, message, result):
     existing_result = ActionResult.objects.filter(action=action, commit=head).first()
     if not existing_result:
         existing_result = ActionResult(action=action, commit=head)
     existing_result.status = result
     existing_result.message = message
     existing_result.save()
-    from sleuthpr.services import checks
-
-    checks.update_checks(installation, repository, pull_request)

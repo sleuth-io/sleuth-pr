@@ -37,7 +37,6 @@ def on_updated(installation: Installation, repository: Repository, pull_request:
     # refresh files and commits
     refresh_commits(installation, repository, pull_request)
 
-    checks.update_checks(installation, repository, pull_request)
     rules.evaluate(repository, PR_UPDATED, {"pull_request": pull_request})
 
 
@@ -46,7 +45,6 @@ def on_created(installation: Installation, repository: Repository, pull_request:
     # refresh files and commits
 
     refresh_commits(installation, repository, pull_request)
-    checks.update_checks(installation, repository, pull_request)
     rules.evaluate(repository, PR_CREATED, {"pull_request": pull_request})
 
 
@@ -68,7 +66,6 @@ def update_status(installation: Installation, repository: Repository, context: s
                 f"Updated check {status.context} to {status.state} for pull request: {pr.remote_id} "
                 f"on {repository.full_name}"
             )
-            checks.update_checks(installation, repository, pr)
             rules.evaluate(repository, STATUS_UPDATED, {"pull_request": pr, "status": status})
 
 
@@ -87,7 +84,6 @@ def update_review(
                 f"Updated review {reviewer.remote_id} to {state} for pull request: {pull_request.remote_id} "
                 f"on {repository.full_name}"
             )
-            checks.update_checks(installation, repository, pull_request)
             rules.evaluate(repository, REVIEW_UPDATED, {"pull_request": pull_request, "reviewer": review})
     else:
         logger.error(f"Missing existing pr reviewer for user {reviewer.id} on pr {pull_request.id}")
@@ -100,7 +96,6 @@ def on_source_change(installation: Installation, repository: Repository, name: s
         logger.info(
             f"PR's base branch updated, updating pull request: {pull_request.remote_id} " f"on {repository.full_name}"
         )
-        checks.update_checks(installation, repository, pull_request)
         rules.evaluate(repository, BASE_BRANCH_UPDATED, {"pull_request": pull_request})
 
 
@@ -112,7 +107,6 @@ def refresh(installation: Installation, repository: Repository):
 
         refresh_commits(installation, repository, pull_request)
 
-        checks.update_checks(installation, repository, pull_request)
         rules.evaluate(repository, PR_CREATED, {"pull_request": pull_request})
 
 
@@ -140,6 +134,8 @@ def add_commits(repository: Repository, commits: List[Commit]) -> Set[str]:
             links.append((commit.sha, parent))
             all_shas.append(commit.sha)
             all_shas.append(parent)
+
+    logger.info(f"Passed links: {links}")
 
     commits_by_child: Dict[str, Commit] = {c.sha: c for c in commits}
 
@@ -174,11 +170,14 @@ def add_commits(repository: Repository, commits: List[Commit]) -> Set[str]:
         .all()
     }
 
+    logger.info(f"existing child:parent -- {[saved_link_shas.keys()]}")
+
     # Add any missing RepositoryCommitParents
     for child_sha, parent_sha in [link for link in links if not saved_link_shas.get(":".join(link))]:
         RepositoryCommitParent.objects.create(
             repository=repository, parent=repo_commits[parent_sha], child=repo_commits[child_sha]
         )
+        logger.info(f"Linking {child_sha} to parent {parent_sha}")
         changed_shas.add(child_sha)
 
     logger.info(f"Updated {len(changed_shas)} changed shas in the db")
