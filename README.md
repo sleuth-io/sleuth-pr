@@ -13,6 +13,8 @@ Sleuth PR is a pull request automation application to help developers waste less
 - Run standalone or embed in another Django application
 - Apache v2 license
 
+(Documentation)[https://sleuth-pr.readthedocs.io/en/latest/]
+
 
 Quickstart Guide
 ----------------
