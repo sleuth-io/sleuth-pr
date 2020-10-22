@@ -53,8 +53,8 @@ def update_checks_for_rule(
             remote_id=check_id,
             pull_request=pull_request,
         )
-    elif CheckStatus(existing_checks[evaluated_rule.id].status) != evaluated_rule.evaluation:
-        logger.info(f"Check outdated for rule {evaluated_rule.id}, updating")
+    else:
+        logger.info(f"Check exists for rule {evaluated_rule.id}, updating")
         installation.client.update_check(
             repository.identifier,
             _make_key(evaluated_rule.rule),
@@ -62,8 +62,6 @@ def update_checks_for_rule(
             details=_make_details(ctx, evaluated_rule),
             remote_check_id=existing_checks[evaluated_rule.id].remote_id,
         )
-    else:
-        logger.info(f"Check exists for rule {evaluated_rule.id} and is up to date, doing nothing")
 
 
 def _make_key(rule: Rule):

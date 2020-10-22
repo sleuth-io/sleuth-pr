@@ -33,11 +33,13 @@ def remove(installation: Installation, repository_ids: List[RepositoryIdentifier
     if not repository_ids:
         raise ValueError("No repository_ids available to remove")
 
+    logger.info(f"Removing existing repositories {repository_ids} for the installation {installation.remote_id}")
     Repository.objects.filter(installation=installation, full_name__in=repository_ids).delete()
     logger.info(f"Deleted repos {repository_ids}")
 
 
 def set_repositories(installation: Installation, repository_ids: List[RepositoryIdentifier]):
+    logger.info(f"Removing existing repositories for the installation {installation.remote_id}")
     Repository.objects.filter(installation=installation).delete()
     return add(installation, repository_ids)
 

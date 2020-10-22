@@ -186,6 +186,7 @@ def _update_pull_request_and_process(
 
 @transaction.atomic
 def _update_pull_request(installation: Installation, repository: Repository, data: Dict) -> Tuple[PullRequest, bool]:
+    logger.info("Transaction started")
     remote_id = data["number"]
 
     pr: PullRequest = repository.pull_requests.filter(remote_id=remote_id).first()
@@ -200,6 +201,7 @@ def _update_pull_request(installation: Installation, repository: Repository, dat
         _ensure_commit(repository, pr.base_sha)
 
     if "title" not in data:
+        logger.info("Transaction ended")
         return pr, is_dirty
 
     is_dirty = _update_pr_details(data, installation, pr) | is_dirty
@@ -239,6 +241,7 @@ def _update_pull_request(installation: Installation, repository: Repository, dat
         logger.info(f"DIRTY!!!!! labels old {existing_labels} new {labels}")
         is_dirty = True
 
+    logger.info("Transaction ended")
     return pr, is_dirty
 
 
@@ -248,6 +251,7 @@ def _ensure_commit(
     existing_commit = repository.commits.filter(sha=sha).first()
     if existing_commit:
         if pull_request and existing_commit.pull_request is None:
+            logger.info(f"Associating existing commit {existing_commit.sha} with pr {pull_request.remote_id} {existing_commit.id}")
             existing_commit.pull_request = pull_request
             existing_commit.save()
         return

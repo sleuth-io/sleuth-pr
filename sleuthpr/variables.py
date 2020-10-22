@@ -165,7 +165,7 @@ def _is_base_branch_synchronized(pull_request: PullRequest):
     branch_head = repo.branches.filter(name=pull_request.base_branch_name).first()
     if branch_head:
         branch_head.refresh_from_db()
-        logger.info(f"Branch {branch_head.name} and id {id(branch_head)} for pr {pull_request.remote_id}")
+        logger.info(f"Branch {branch_head.name} and head {branch_head.head_sha} for pr {pull_request.remote_id}")
         result = repo.commit_tree.filter(child__pull_request=pull_request, parent__sha=branch_head.head_sha).exists()
         if not result:
             logger.info(
@@ -174,6 +174,7 @@ def _is_base_branch_synchronized(pull_request: PullRequest):
             without_pr = repo.commit_tree.filter(parent__sha=branch_head.head_sha).first()
             logger.info(
                 f"Does that sha exist but just not associated with the pull request? {without_pr.child.sha if without_pr else 'No'}"
+                f" and {without_pr.child.pull_request if without_pr else 'No'} and {without_pr.child.id if without_pr else 'No'}"
             )
         return result
     else:

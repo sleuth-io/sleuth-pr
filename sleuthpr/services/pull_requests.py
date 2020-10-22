@@ -50,7 +50,7 @@ def on_created(installation: Installation, repository: Repository, pull_request:
 
 def delete(repository: Repository, pull_request: PullRequest):
     pull_request.delete()
-    logger.info(f"Created pull request: {pull_request.remote_id} on {repository.full_name}")
+    logger.info(f"Deleted pull request: {pull_request.remote_id} on {repository.full_name}")
 
 
 def update_status(installation: Installation, repository: Repository, context: str, state: CheckStatus, sha: str):

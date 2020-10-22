@@ -145,7 +145,7 @@ LOGGING = {
     },
     "formatters": {
         "simple": {
-            "format": "{levelname} {event_id} {message}",
+            "format": "{asctime} {levelname} {event_id} {message}",
             "style": "{",
         },
     },
