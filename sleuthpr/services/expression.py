@@ -5,15 +5,10 @@ from typing import List
 
 import pyparsing as pp
 
-try:
-    import re2 as re
-except ImportError:
-    print("Cannot find re2, switching to insecure default")
-    import re
-
 from sleuthpr import registry
 from sleuthpr.models import ConditionVariableType
 from sleuthpr.models import TriState
+from sleuthpr.services.operators import OPERATORS
 
 
 class ParsedExpression:
@@ -93,56 +88,9 @@ class Condition:
     def eval(self, context: Dict):
         leval = self.identifier.eval(context)
         reval = self.rval.eval(context)
-        if self.op == "=":
-            if isinstance(leval, list):
-                if isinstance(reval, int):
-                    return len(leval) == reval
-                else:
-                    return reval in leval
-            return leval == reval
-        elif self.op == "!=" or self.op == "<>":
-            if isinstance(leval, list):
-                if isinstance(reval, int):
-                    return len(leval) != reval
-                else:
-                    return reval not in leval
-            return leval != reval
-        elif self.op == "<":
-            if isinstance(leval, list):
-                if isinstance(reval, int):
-                    return len(leval) < reval
-                else:
-                    raise ValueError("Cannot compare a non-int to a list")
-            return leval < reval
-        elif self.op == ">":
-            if isinstance(leval, list):
-                if isinstance(reval, int):
-                    return len(leval) > reval
-                else:
-                    raise ValueError("Cannot compare a non-int to a list")
-            return leval > reval
-        elif self.op == "<=":
-            if isinstance(leval, list):
-                if isinstance(reval, int):
-                    return len(leval) <= reval
-                else:
-                    raise ValueError("Cannot compare a non-int to a list")
-            return leval <= reval
-        elif self.op == ">=":
-            if isinstance(leval, list):
-                if isinstance(reval, int):
-                    return len(leval) >= reval
-                else:
-                    raise ValueError("Cannot compare a non-int to a list")
-            return leval >= reval
-        elif self.op == "~=":
-            ptn = re.compile(reval)
-            if isinstance(leval, list):
-                for item in leval:
-                    if ptn.match(item):
-                        return True
-                return False
-            return ptn.match(leval) is not None
+        result = OPERATORS.get(self.op)
+        if result:
+            return result.evaluate(leval, reval)
         raise ValueError()
 
     def visit(self, visitor: Callable[[Any], None]):
@@ -225,7 +173,7 @@ rparen = pp.Suppress(")")
 and_ = pp.CaselessLiteral("AND")
 or_ = pp.CaselessLiteral("OR")
 
-op = pp.oneOf(("=", "!=", ">", ">=", "<", "<=", "~="))
+op = pp.oneOf((op for op in OPERATORS))
 
 true_ = pp.CaselessKeyword("true").setParseAction(Boolean)
 false_ = pp.CaselessKeyword("false").setParseAction(Boolean)

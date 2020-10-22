@@ -7,7 +7,8 @@ from django.apps import apps
 from sleuthpr.models import ActionType
 from sleuthpr.models import ConditionVariableType
 from sleuthpr.models import TriggerType
-
+from sleuthpr.services.operators import Operator
+from sleuthpr.services.operators import OPERATORS
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,10 @@ def _init():
 def get_all_condition_variable_types() -> List[ConditionVariableType]:
     _init()
     return list(_condition_variable_types.values())
+
+
+def get_all_operators() -> List[Operator]:
+    return [op for op in OPERATORS.values()]
 
 
 def get_all_trigger_types() -> List[TriggerType]:

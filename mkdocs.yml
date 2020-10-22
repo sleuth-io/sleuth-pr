@@ -6,4 +6,13 @@ theme:
 
 nav:
     - Home: index.md
+    - Triggers: triggers.md
+    - Conditions: conditions.md
+    - Variables: variables.md
+    - Actions: actions.md
     - About: about.md
+
+
+plugins:
+    - macros:
+        module_name: docs
