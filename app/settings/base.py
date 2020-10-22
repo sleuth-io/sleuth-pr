@@ -17,7 +17,6 @@ import opentracing
 from basictracer import BasicTracer
 from opentracing.scope_managers.tornado import TornadoScopeManager
 from opentracing_instrumentation.client_hooks import install_all_patches
-from redlock import RedLockFactory
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 

@@ -17,7 +17,6 @@ from sleuthpr.models import Repository
 from sleuthpr.models import RepositoryCommit
 from sleuthpr.models import RepositoryCommitParent
 from sleuthpr.models import ReviewState
-from sleuthpr.services import checks
 from sleuthpr.services import external_users
 from sleuthpr.services import rules
 from sleuthpr.services.scm import Commit

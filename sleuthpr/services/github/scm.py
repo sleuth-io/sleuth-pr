@@ -328,7 +328,7 @@ def _build_commits_query(repo: RepositoryIdentifier, commit_shas: List[str]) -> 
             c_{sha}: object(oid: "{sha}") {{
               ... on Commit {{
                 oid
-                message 
+                message
                 author {{
                   name
                   email
@@ -346,7 +346,7 @@ def _build_commits_query(repo: RepositoryIdentifier, commit_shas: List[str]) -> 
                     }}
                   }}
                 }}
-              }}    
+              }}
             }}"""
         )
 

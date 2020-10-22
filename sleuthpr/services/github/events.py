@@ -252,7 +252,8 @@ def _ensure_commit(
     if existing_commit:
         if pull_request and existing_commit.pull_request is None:
             logger.info(
-                f"Associating existing commit {existing_commit.sha} with pr {pull_request.remote_id} {existing_commit.id}"
+                f"Associating existing commit {existing_commit.sha} with pr "
+                f"{pull_request.remote_id} {existing_commit.id}"
             )
             existing_commit.pull_request = pull_request
             existing_commit.save()
