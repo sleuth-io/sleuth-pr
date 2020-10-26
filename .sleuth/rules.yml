@@ -3,7 +3,7 @@ rules:
       description: "Automerge any up to date pull requests"
       conditions:
         - behind=false
-        - label=mergeable
+        - label='mergeable'
       actions:
         - merge_pull_request
 
