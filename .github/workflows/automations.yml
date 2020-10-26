@@ -1,6 +1,6 @@
 name: Automations
 
-on: [push, pull_request, pull_request_review, check_run]
+on: [push, pull_request, pull_request_review, check_run, label]
 
 jobs:
   run-sleuth-pr:
