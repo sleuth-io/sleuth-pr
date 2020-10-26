@@ -7,6 +7,7 @@ from sleuthpr.models import ConditionVariableType
 from sleuthpr.models import PullRequest
 from sleuthpr.models import ReviewState
 from sleuthpr.models import TriState
+from sleuthpr.services import branches
 from sleuthpr.triggers import BASE_BRANCH_UPDATED
 from sleuthpr.triggers import PR_CLOSED
 from sleuthpr.triggers import PR_CREATED
@@ -163,6 +164,16 @@ def _is_base_branch_synchronized(pull_request: PullRequest):
     repo = pull_request.repository
 
     branch_head = repo.branches.filter(name=pull_request.base_branch_name).first()
+
+    if not branch_head:
+        # this doesn't exist because it is a github action and doesn't have the data loaded from the push
+        # event, so load it here
+        branch_head = branches.update_sha(
+            pull_request.repository.installation,
+            pull_request.repository,
+            pull_request.base_branch_name,
+            pull_request.base_sha,
+        )
     if branch_head:
         branch_head.refresh_from_db()
         logger.info(f"Branch {branch_head.name} and head {branch_head.head_sha} for pr {pull_request.remote_id}")
