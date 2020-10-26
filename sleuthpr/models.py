@@ -77,6 +77,7 @@ class ReviewState(TextChoices):
     CHANGES_REQUESTED = ("changes_requested", "Changes requested")
     COMMENTED = ("commented", "Commented")
     PENDING = ("pending", "Pending")
+    SUBMITTED = ("submitted", "Submitted")
 
 
 class Installation(models.Model):
