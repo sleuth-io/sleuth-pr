@@ -200,7 +200,7 @@ def _get_context_list(context, status):
 
 STATUS_STATE_VARS = [
     ConditionVariableType(
-        key=f"status-{status}",
+        key=f"status_{status}",
         label=f"List of status contexts in a {label} state",
         type=list,
         default_triggers=[STATUS_UPDATED],
@@ -216,7 +216,7 @@ def _get_username_list(context, status):
 
 REVIEW_STATE_VARS = [
     ConditionVariableType(
-        key=f"review-{status}",
+        key=f"review_{status}",
         label=f"List of usernames that have reviewed the PR in a {label} state",
         type=list,
         default_triggers=[REVIEW_UPDATED],

@@ -55,7 +55,7 @@ def test_statuses():
         PullRequestStatusFactory(pull_request=pr, context=f"ctx/{status}", state=status)
 
     for status in CheckStatus:
-        assert ParsedExpression(f"status-{status}='ctx/{status}'").execute(pull_request=pr)
+        assert ParsedExpression(f"status_{status}='ctx/{status}'").execute(pull_request=pr)
 
 
 @pytest.mark.django_db
@@ -80,7 +80,7 @@ def test_review_state():
         reviewers[state] = PullRequestReviewerFactory(pull_request=pr, state=state).user.username
 
     for state in ReviewState:
-        assert ParsedExpression(f"review-{state}='{reviewers[state]}'").execute(pull_request=pr)
+        assert ParsedExpression(f"review_{state}='{reviewers[state]}'").execute(pull_request=pr)
 
 
 def _get_pr() -> PullRequest:
